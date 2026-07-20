@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PhysicsEasy | HKDSE 物理學習平台</title>
+<meta name="description" content="HKDSE 物理科互動學習平台：概念筆記、歷屆試題、錯誤追蹤及高保真 3D 模擬。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+
+/* ── Canvas ── */
+.landing-canvas {
+  position: absolute; inset: 0; display: block;
+  width: 100%; height: 100%; z-index: 0;
+}
+
+/* ── Root doc ── */
+.doc {
+  --velocity: #22d3ee;
+  --force:    #fb923c;
+  --elective: #a78bfa;
+  --star:     #ffd27a;
+  --ink:      #0b1020;
+  --line:     #26304f;
+  --fg:       #eaf0ff;
+  --muted:    #9aa6cf;
+  --display:  "Space Grotesk", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --mono:     "JetBrains Mono", ui-monospace, monospace;
+  --body:     "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+
+  height: 100dvh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.doc::-webkit-scrollbar { width: 0; }
+
+/* ── Brand bar ── */
+.brandbar {
+  position: fixed; z-index: 20;
+  top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.05rem clamp(1.25rem, 5vw, 4rem);
+  font-family: var(--mono);
+  font-size: 0.74rem; letter-spacing: 0.26em; text-transform: uppercase;
+  background: linear-gradient(rgba(11,16,32,0.72), transparent);
+}
+.brand { display: flex; align-items: center; gap: 0.55rem; color: var(--velocity); }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--velocity);
+  box-shadow: 0 0 10px 2px rgba(34,211,238,0.7);
+}
+
+/* ── Nav dots ── */
+.dots {
+  position: fixed; z-index: 20;
+  right: clamp(0.8rem, 2.4vw, 1.8rem);
+  top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.dot-btn {
+  width: 9px; height: 9px; padding: 0; border-radius: 50%;
+  cursor: pointer; border: 1px solid var(--muted);
+  background: transparent; transition: all 0.25s;
+}
+.dot-btn.current {
+  background: var(--velocity); border-color: var(--velocity);
+  box-shadow: 0 0 10px 1px rgba(34,211,238,0.7);
+  transform: scale(1.25);
+}
+@media (max-width: 820px) { .dots { display: none; } }
+
+/* ── Panels ── */
+.panel {
+  position: relative; min-height: 100dvh;
+  scroll-snap-align: start; overflow: hidden;
+  display: grid; align-items: center;
+}
+.panel[data-accent="velocity"] { --accent: var(--velocity); --accentRgb: 34,211,238; }
+.panel[data-accent="star"]     { --accent: var(--star);     --accentRgb: 255,210,122; }
+.panel[data-accent="force"]    { --accent: var(--force);    --accentRgb: 251,146,60; }
+.panel[data-accent="elective"] { --accent: var(--elective); --accentRgb: 167,139,250; }
+
+.veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.panel[data-align="left"]  .veil {
+  background:
+    linear-gradient(90deg, rgba(11,16,32,0.6), transparent 62%),
+    radial-gradient(60% 60% at 82% 34%, rgba(var(--accentRgb),0.1), transparent);
+}
+.panel[data-align="right"] .veil {
+  background:
+    linear-gradient(90deg, transparent 38%, rgba(11,16,32,0.6)),
+    radial-gradient(60% 60% at 24% 40%, rgba(var(--accentRgb),0.12), transparent);
+}
+.panel[data-kind="hero"]  .veil,
+.panel[data-kind="cta"]   .veil {
+  background: radial-gradient(60% 60% at 50% 45%, rgba(34,211,238,0.08), transparent);
+}
+
+/* ── Hero / CTA ── */
+.panel[data-kind="hero"], .panel[data-kind="cta"] { place-items: center; text-align: center; }
+.panel[data-kind="hero"] { cursor: crosshair; }
+.center {
+  position: relative; z-index: 3;
+  padding: 2rem clamp(1.25rem, 5vw, 4rem); max-width: 46rem;
+}
+.panel[data-kind="hero"] .center { pointer-events: none; }
+
+.badge {
+  font-family: var(--mono); font-size: 0.72rem;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--velocity); border: 1px solid rgba(34,211,238,0.3);
+  border-radius: 999px; padding: 0.4rem 1rem;
+  background: rgba(34,211,238,0.06);
+}
+.center h1 {
+  font-family: var(--display); font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.02;
+  margin: 1.6rem 0 0;
+  font-size: clamp(2.7rem, 8vw, 6rem);
+  text-wrap: balance;
+  text-shadow: 0 2px 40px rgba(11,16,32,0.9);
+}
+.center h2 {
+  font-family: var(--display); font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.05;
+  margin: 1rem 0 0; font-size: clamp(2.3rem, 6vw, 4.2rem);
+}
+.grad {
+  background: linear-gradient(100deg, var(--velocity), #a5f3fc 45%, var(--force));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.center .lede {
+  color: var(--muted); font-size: clamp(1rem, 1.9vw, 1.2rem);
+  line-height: 1.7; margin: 1.5rem auto 0; max-width: 33rem;
+  text-shadow: 0 2px 24px rgba(11,16,32,0.9);
+}
+
+/* ── Experiment sections ── */
+.panel[data-kind="exp"] {
+  grid-template-columns: 1.05fr 1fr; gap: 2rem;
+  padding: clamp(4.5rem,10vh,7rem) clamp(1.25rem,5vw,4rem);
+}
+.panel[data-kind="exp"][data-align="right"] { grid-template-columns: 1fr 1.05fr; }
+.panel[data-kind="exp"][data-align="right"] .copy { grid-column: 2; }
+
+.copy {
+  position: relative; z-index: 3; max-width: 34rem;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.85s ease, transform 0.85s ease;
+}
+.panel.revealed .copy { opacity: 1; transform: none; }
+
+.kicker {
+  color: var(--accent); font-family: var(--mono);
+  font-size: 0.76rem; letter-spacing: 0.3em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 0.7rem; margin: 0 0 1.1rem;
+}
+.num {
+  background: currentColor; border-radius: 5px;
+  padding: 0.12rem 0.5rem; display: inline-flex;
+}
+.num > span { color: #0a1220; font-weight: 700; }
+.copy h2 {
+  font-family: var(--display); font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.05;
+  font-size: clamp(2.2rem, 5vw, 3.9rem); margin: 0; text-wrap: balance;
+}
+.hl { color: var(--accent); }
+.copy p {
+  color: var(--muted); font-size: clamp(1rem, 1.7vw, 1.16rem);
+  line-height: 1.7; margin: 1.3rem 0 0; max-width: 30rem;
+}
+.readout { display: flex; gap: 1.7rem; margin-top: 1.8rem; font-family: var(--mono); flex-wrap: wrap; }
+.readout > div { display: flex; flex-direction: column; gap: 0.25rem; }
+.readout b { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.readout span { font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.ihint {
+  margin-top: 1.6rem; font-family: var(--mono);
+  font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--accent); display: flex; align-items: center; gap: 0.5rem;
+}
+.ihint::before { content: ""; width: 1.4rem; height: 1px; background: var(--accent); }
+
+/* ── Buttons ── */
+.btnrow {
+  display: flex; gap: 0.9rem; margin-top: 2.3rem;
+  flex-wrap: wrap; justify-content: center; pointer-events: auto;
+}
+.btn {
+  font: 600 1rem var(--body); border-radius: 999px;
+  padding: 0.95rem 1.7rem; cursor: pointer; border: 1px solid transparent;
+  display: inline-flex; gap: 0.65rem; align-items: center;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+}
+.btn:focus-visible { outline: 2px solid var(--velocity); outline-offset: 3px; }
+.btn.primary { background: var(--fg); color: #0a1a2f; }
+.btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px -14px rgba(34,211,238,0.75); }
+.btn.ghost {
+  background: rgba(234,240,255,0.05); color: var(--fg);
+  border: 1px solid var(--line);
+}
+.btn.ghost:hover { border-color: var(--velocity); transform: translateY(-2px); }
+
+.brandcta {
+  font: inherit; letter-spacing: 0.12em; cursor: pointer;
+  background: var(--fg); color: #0a1a2f; border: 0;
+  border-radius: 999px; padding: 0.55rem 1.05rem;
+  text-decoration: none;
+}
+
+/* ── Hero hints ── */
+.hint {
+  position: absolute; z-index: 3;
+  left: 50%; bottom: 4.2rem; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--muted);
+}
+.scrollhint {
+  position: absolute; z-index: 3;
+  left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--muted);
+}
+.mark {
+  width: 1px; height: 24px;
+  background: linear-gradient(var(--velocity), transparent);
+  animation: landing-drop 1.8s infinite;
+}
+@keyframes landing-drop {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  51%  { transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+@media (max-width: 820px) {
+  .panel[data-kind="exp"],
+  .panel[data-kind="exp"][data-align="right"] { grid-template-columns: 1fr; }
+  .panel[data-kind="exp"][data-align="right"] .copy { grid-column: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy { opacity: 1; transform: none; transition: none; }
+  .mark { animation: none; }
+  .doc { scroll-behavior: auto; }
+  .panel[data-kind="hero"] { cursor: default; }
+}
+</style>
+</head>
+<body>
+
+<div class="doc" id="doc">
+
+  <!-- Brand bar -->
+  <div class="brandbar">
+    <div class="brand">
+      <span class="dot"></span> PhysicsEasy
+    </div>
+    <span class="brandcta" style="pointer-events:none;opacity:0.4;cursor:default;">即將推出</span>
+  </div>
+
+  <!-- Navigation dots (filled by JS) -->
+  <div class="dots" id="dots"></div>
+
+  <!-- Hero panel -->
+  <section class="panel" data-kind="hero" data-accent="velocity" data-align="left" data-idx="0">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="center">
+      <span class="badge">HKDSE 物理 · 互動學習平台</span>
+      <h1>看得見的物理，<br /><span class="grad">才學得會</span></h1>
+      <p class="lede">
+        拋體、天體、氣體、光 &mdash;&mdash; 背後是一整片可互動的物理力場。以真實模擬與歷屆試題，把每一次做錯，變成真正搞懂的一刻。
+      </p>
+      <div class="btnrow">
+        <a class="btn primary" href="https://github.com/your-repo" target="_blank" rel="noopener">了解更多 →</a>
+      </div>
+    </div>
+    <div class="hint">移動滑鼠 · 點擊注入能量</div>
+    <div class="scrollhint">向下捲動探索<span class="mark"></span></div>
+  </section>
+
+  <!-- Exp 01: Projectile -->
+  <section class="panel" data-kind="exp" data-accent="velocity" data-align="left" data-idx="1">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="copy">
+      <p class="kicker"><span class="num"><span>01</span></span> 力學 · 拋體運動</p>
+      <h2>每一條軌跡，<br />都是一條<span class="hl">方程式</span>。</h2>
+      <p>調角度、調初速，親眼看着 v、a、g 如何塑造運動。把「做錯的一題」拆回它背後的物理。</p>
+      <div class="readout">
+        <div><b style="color:var(--velocity)">52°</b><span>launch angle</span></div>
+        <div><b style="color:var(--force)">9.8</b><span>m·s⁻²</span></div>
+        <div><b>1.9</b><span>seconds</span></div>
+      </div>
+      <p class="ihint">移動滑鼠瞄準 · 點擊發射</p>
+    </div>
+  </section>
+
+  <!-- Exp 02: Astronomy -->
+  <section class="panel" data-kind="exp" data-accent="star" data-align="right" data-idx="2">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="copy">
+      <p class="kicker"><span class="num"><span>02</span></span> 天體物理 · 萬有引力</p>
+      <h2>同一條定律，<br />從<span class="hl">蘋果到行星</span>。</h2>
+      <p>行星為何不墜落？把地面上的重力，延伸到整個星系。軌道、週期、向心力 &mdash;&mdash; 一次看懂。</p>
+      <div class="readout">
+        <div><b style="color:var(--star)">3</b><span>orbits</span></div>
+        <div><b>T ∝ r³ᐟ²</b><span>kepler III</span></div>
+      </div>
+      <p class="ihint">移動滑鼠牽引 · 點擊加入行星</p>
+    </div>
+  </section>
+
+  <!-- Exp 03: Gas -->
+  <section class="panel" data-kind="exp" data-accent="force" data-align="left" data-idx="3">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="copy">
+      <p class="kicker"><span class="num"><span>03</span></span> 熱學 · 氣體分子</p>
+      <h2>溫度，<br />其實是<span class="hl">運動</span>。</h2>
+      <p>把抽象的動能變成看得見的碰撞。加熱、加壓，觀察分子如何愈撞愈快 &mdash;&mdash; 理想氣體不再只是公式。</p>
+      <div class="readout">
+        <div><b style="color:var(--force)">340</b><span>kelvin</span></div>
+        <div><b>1.2×10⁵</b><span>pascal</span></div>
+      </div>
+      <p class="ihint">移動滑鼠加熱 · 點擊升溫</p>
+    </div>
+  </section>
+
+  <!-- Exp 04: Light -->
+  <section class="panel" data-kind="exp" data-accent="elective" data-align="right" data-idx="4">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="copy">
+      <p class="kicker"><span class="num"><span>04</span></span> 波動 · 光與色散</p>
+      <h2>一束白光，<br />藏著整道<span class="hl">彩虹</span>。</h2>
+      <p>折射、色散、全內反射 &mdash;&mdash; 光的路徑由角度決定。配合歷屆光學題，把概念一次貫通。</p>
+      <div class="readout">
+        <div><b style="color:var(--elective)">1.52</b><span>refractive index</span></div>
+        <div><b>7</b><span>spectrum</span></div>
+      </div>
+      <p class="ihint">移動滑鼠改變入射角</p>
+    </div>
+  </section>
+
+  <!-- CTA panel -->
+  <section class="panel" data-kind="cta" data-accent="velocity" data-align="left" data-idx="5">
+    <canvas class="landing-canvas" aria-hidden></canvas>
+    <div class="veil"></div>
+    <div class="center">
+      <p class="kicker" style="justify-content:center">
+        <span class="num"><span>▸</span></span> 準備好了嗎
+      </p>
+      <h2>由今天起，<span class="grad">從錯誤中學物理</span>。</h2>
+      <p class="lede">
+        登入即開始追蹤你的錯題、掌握度與歷屆試題進度 &mdash;&mdash; 跨裝置同步。
+      </p>
+      <div class="btnrow">
+        <a class="btn primary" href="https://github.com/IoTSolutionSmartCity/IoTSolutionSmartCity.github.io.git" target="_blank" rel="noopener">了解更多 →</a>
+      </div>
+    </div>
+  </section>
+
+</div><!-- .doc -->
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Landing scenes (ported from landingScenes.ts — pure canvas JS)
+// ─────────────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
+
+const field = (S) => {
+  const COLORS = ["34,211,238","34,211,238","34,211,238","251,146,60","167,139,250"];
+  let ps = [];
+  const make = (x, y, energetic) => {
+    const sp = (energetic ? 3.4 : 0.5) * S.DPR;
+    return { x: x ?? Math.random()*S.W, y: y ?? Math.random()*S.H,
+             vx: (Math.random()-0.5)*sp, vy: (Math.random()-0.5)*sp,
+             r: Math.random()*2+1.6, c: COLORS[(Math.random()*COLORS.length)|0] };
+  };
+  S.setInit(() => {
+    const n = Math.min(96, Math.round((S.W*S.H)/(26000*S.DPR*S.DPR))+40);
+    ps = Array.from({length:n}, () => make());
+  });
+  S.onDown = (x,y) => { for(let i=0;i<8;i++) if(ps.length<180) ps.push(make(x,y,true)); };
+  return () => {
+    const c=S.ctx, link=130*S.DPR, push=130*S.DPR;
+    c.clearRect(0,0,S.W,S.H);
+    for(let i=0;i<ps.length;i++){
+      for(let j=i+1;j<ps.length;j++){
+        const a=ps[i],b=ps[j], dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+        if(d2<link*link){
+          const al=(1-Math.sqrt(d2)/link)*0.5;
+          c.strokeStyle="rgba(34,211,238,"+al.toFixed(3)+")";
+          c.lineWidth=1; c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.stroke();
+        }
+      }
+    }
+    for(const p of ps){
+      if(S.pointer.active){
+        const dx=p.x-S.pointer.x,dy=p.y-S.pointer.y,d=Math.hypot(dx,dy);
+        if(d<push&&d>0.1){ const f=(1-d/push)*0.95*S.DPR; p.vx+=(dx/d)*f; p.vy+=(dy/d)*f; }
+      }
+      p.x+=p.vx; p.y+=p.vy; p.vx*=0.985; p.vy*=0.985;
+      if(Math.hypot(p.vx,p.vy)<0.25*S.DPR){ p.vx+=(Math.random()-0.5)*0.12*S.DPR; p.vy+=(Math.random()-0.5)*0.12*S.DPR; }
+      if(p.x<0){p.x=0;p.vx*=-1;} if(p.x>S.W){p.x=S.W;p.vx*=-1;}
+      if(p.y<0){p.y=0;p.vy*=-1;} if(p.y>S.H){p.y=S.H;p.vy*=-1;}
+      c.beginPath(); c.arc(p.x,p.y,p.r*S.DPR,0,TAU);
+      c.fillStyle="rgba("+p.c+",0.95)"; c.shadowColor="rgba("+p.c+",0.9)"; c.shadowBlur=8*S.DPR;
+      c.fill(); c.shadowBlur=0;
+    }
+    if(S.pointer.active){
+      const g=c.createRadialGradient(S.pointer.x,S.pointer.y,0,S.pointer.x,S.pointer.y,push);
+      g.addColorStop(0,"rgba(34,211,238,0.10)"); g.addColorStop(1,"rgba(34,211,238,0)");
+      c.fillStyle=g; c.beginPath(); c.arc(S.pointer.x,S.pointer.y,push,0,TAU); c.fill();
+    }
+  };
+};
+
+const projectile = (S) => {
+  let shots=[];
+  const launcher=()=>({x:S.W*0.1,y:S.H*0.82});
+  const fireToward=(px,py)=>{
+    const l=launcher(), k=0.16;
+    let vx=(px-l.x)*k, vy=(py-l.y)*k;
+    const max=S.H*0.03, m=Math.hypot(vx,vy);
+    if(m>max){vx=(vx/m)*max; vy=(vy/m)*max;}
+    if(vy>0) vy=-Math.abs(vy)*0.6;
+    shots.push({x:l.x,y:l.y,vx,vy,g:S.H*0.00034,tr:[]});
+  };
+  const fireAuto=()=>{
+    const a=(50+Math.random()*14)*Math.PI/180, sp=S.H*0.02, l=launcher();
+    shots.push({x:l.x,y:l.y,vx:Math.cos(a)*sp,vy:-Math.sin(a)*sp,g:S.H*0.00034,tr:[]});
+  };
+  S.setInit(()=>{shots=[];});
+  S.onDown=(x,y)=>fireToward(x,y);
+  const grid=()=>{
+    const s=44*S.DPR;
+    S.ctx.strokeStyle="rgba(38,48,79,.35)"; S.ctx.lineWidth=1; S.ctx.beginPath();
+    for(let x=0;x<S.W;x+=s){S.ctx.moveTo(x,0);S.ctx.lineTo(x,S.H);}
+    for(let y=0;y<S.H;y+=s){S.ctx.moveTo(0,y);S.ctx.lineTo(S.W,y);}
+    S.ctx.stroke();
+  };
+  return ()=>{
+    const c=S.ctx, l=launcher();
+    c.clearRect(0,0,S.W,S.H); grid();
+    c.strokeStyle="rgba(38,48,79,.9)"; c.lineWidth=S.DPR; c.beginPath();
+    c.moveTo(0,S.H*0.82); c.lineTo(S.W,S.H*0.82); c.stroke();
+    if(S.pointer.active){
+      c.strokeStyle="rgba(251,146,60,.5)"; c.setLineDash([4*S.DPR,6*S.DPR]); c.lineWidth=1.5*S.DPR;
+      c.beginPath(); c.moveTo(l.x,l.y); c.lineTo(S.pointer.x,S.pointer.y); c.stroke(); c.setLineDash([]);
+    }
+    c.beginPath(); c.arc(l.x,l.y,5*S.DPR,0,TAU); c.fillStyle="#fb923c"; c.fill();
+    if(Math.random()<0.014&&shots.length<3) fireAuto();
+    for(let i=shots.length-1;i>=0;i--){
+      const s=shots[i];
+      s.x+=s.vx; s.y+=s.vy; s.vy+=s.g; s.tr.push([s.x,s.y]);
+      if(s.tr.length>80) s.tr.shift();
+      for(let t=1;t<s.tr.length;t++){
+        const al=t/s.tr.length;
+        c.strokeStyle="rgba(34,211,238,"+(al*0.6).toFixed(3)+")";
+        c.lineWidth=al*3*S.DPR; c.beginPath();
+        c.moveTo(s.tr[t-1][0],s.tr[t-1][1]); c.lineTo(s.tr[t][0],s.tr[t][1]); c.stroke();
+      }
+      c.beginPath(); c.arc(s.x,s.y,4.5*S.DPR,0,TAU);
+      c.fillStyle="#a5f3fc"; c.shadowColor="rgba(34,211,238,.9)"; c.shadowBlur=16*S.DPR;
+      c.fill(); c.shadowBlur=0;
+      if((s.y>S.H*0.82&&s.vy>0)||s.x>S.W||s.x<0) shots.splice(i,1);
+    }
+  };
+};
+
+const astronomy = (S) => {
+  let bodies=[],stars=[],cx=0,cy=0,GM=0,t=0;
+  const soft=()=>(Math.min(S.W,S.H)*0.04)**2;
+  const spawn=(r,col,rad,ang)=>{
+    const v=Math.sqrt(GM/rad);
+    const x=cx+Math.cos(ang)*rad, y=cy+Math.sin(ang)*rad;
+    return {x,y,vx:-Math.sin(ang)*v,vy:Math.cos(ang)*v,r,c:col,tr:[]};
+  };
+  S.setInit(()=>{
+    cx=S.W*0.3; cy=S.H*0.5; t=0;
+    const min=Math.min(S.W,S.H), refR=min*0.3, refT=430;
+    GM=(4*Math.PI*Math.PI*refR**3)/(refT*refT);
+    stars=Array.from({length:90},()=>({x:Math.random()*S.W,y:Math.random()*S.H,ph:Math.random()*TAU,r:Math.random()*1.3+0.3}));
+    bodies=[
+      spawn(4.5*S.DPR,"34,211,238",min*0.18,0),
+      spawn(6*S.DPR,"167,139,250",min*0.26,2),
+      spawn(3.5*S.DPR,"234,240,255",min*0.34,4),
+    ];
+  });
+  S.onDown=(x,y)=>{
+    if(bodies.length>=7) bodies.shift();
+    const dx=x-cx,dy=y-cy,rad=Math.hypot(dx,dy)||1, ang=Math.atan2(dy,dx);
+    const cols=["34,211,238","167,139,250","251,146,60","234,240,255"];
+    bodies.push(spawn(4*S.DPR,cols[(Math.random()*cols.length)|0],rad,ang));
+  };
+  return ()=>{
+    const c=S.ctx; t+=1;
+    c.fillStyle="rgba(11,16,32,0.30)"; c.fillRect(0,0,S.W,S.H);
+    for(const s of stars){
+      const tw=0.5+0.5*Math.sin(t*0.03+s.ph);
+      c.beginPath(); c.arc(s.x,s.y,s.r*S.DPR,0,TAU);
+      c.fillStyle="rgba(234,240,255,"+(0.15+tw*0.4).toFixed(2)+")"; c.fill();
+    }
+    const rad=Math.min(S.W,S.H)*0.16;
+    const glow=c.createRadialGradient(cx,cy,0,cx,cy,rad);
+    glow.addColorStop(0,"rgba(255,210,122,0.9)"); glow.addColorStop(0.4,"rgba(251,146,60,0.32)"); glow.addColorStop(1,"rgba(251,146,60,0)");
+    c.fillStyle=glow; c.beginPath(); c.arc(cx,cy,rad,0,TAU); c.fill();
+    c.beginPath(); c.arc(cx,cy,10*S.DPR,0,TAU);
+    c.fillStyle="#ffe6ad"; c.shadowColor="rgba(255,210,122,0.9)"; c.shadowBlur=30*S.DPR; c.fill(); c.shadowBlur=0;
+    const eps=soft();
+    for(let i=bodies.length-1;i>=0;i--){
+      const b=bodies[i];
+      let dx=cx-b.x,dy=cy-b.y, r2=dx*dx+dy*dy+eps, inv=GM/(r2*Math.sqrt(r2));
+      b.vx+=dx*inv; b.vy+=dy*inv;
+      if(S.pointer.active){
+        dx=S.pointer.x-b.x; dy=S.pointer.y-b.y; r2=dx*dx+dy*dy+eps; inv=(GM*0.5)/(r2*Math.sqrt(r2));
+        b.vx+=dx*inv; b.vy+=dy*inv;
+      }
+      b.x+=b.vx; b.y+=b.vy; b.tr.push([b.x,b.y]);
+      if(b.tr.length>46) b.tr.shift();
+      for(let k=1;k<b.tr.length;k++){
+        const al=(k/b.tr.length)*0.5;
+        c.strokeStyle="rgba("+b.c+","+al.toFixed(3)+")"; c.lineWidth=al*2.6*S.DPR;
+        c.beginPath(); c.moveTo(b.tr[k-1][0],b.tr[k-1][1]); c.lineTo(b.tr[k][0],b.tr[k][1]); c.stroke();
+      }
+      c.beginPath(); c.arc(b.x,b.y,b.r,0,TAU);
+      c.fillStyle="rgb("+b.c+")"; c.shadowColor="rgba("+b.c+",0.9)"; c.shadowBlur=12*S.DPR;
+      c.fill(); c.shadowBlur=0;
+      const dist=Math.hypot(b.x-cx,b.y-cy);
+      if(i>=3&&(dist>Math.max(S.W,S.H)||dist<12*S.DPR)) bodies.splice(i,1);
+    }
+  };
+};
+
+const gas = (S) => {
+  let mol=[];
+  const pad=()=>Math.min(S.W,S.H)*0.14;
+  S.setInit(()=>{
+    const n=38, sp=S.H*0.0035, p=pad();
+    mol=Array.from({length:n},()=>({
+      x:p+Math.random()*(S.W-2*p), y:p+Math.random()*(S.H-2*p),
+      vx:(Math.random()-0.5)*sp*2, vy:(Math.random()-0.5)*sp*2,
+      r:Math.random()*3+3,
+    }));
+  });
+  S.onDown=()=>{ for(const m of mol){m.vx*=1.35;m.vy*=1.35;} };
+  return ()=>{
+    const c=S.ctx, p=pad();
+    c.clearRect(0,0,S.W,S.H);
+    c.strokeStyle="rgba(251,146,60,0.35)"; c.lineWidth=1.5*S.DPR; c.strokeRect(p,p,S.W-2*p,S.H-2*p);
+    if(S.pointer.active){
+      const g=c.createRadialGradient(S.pointer.x,S.pointer.y,0,S.pointer.x,S.pointer.y,90*S.DPR);
+      g.addColorStop(0,"rgba(251,146,60,0.14)"); g.addColorStop(1,"rgba(251,146,60,0)");
+      c.fillStyle=g; c.beginPath(); c.arc(S.pointer.x,S.pointer.y,90*S.DPR,0,TAU); c.fill();
+    }
+    const vmax=S.H*0.01;
+    for(const m of mol){
+      if(S.pointer.active){
+        const dx=m.x-S.pointer.x,dy=m.y-S.pointer.y,d=Math.hypot(dx,dy);
+        if(d<90*S.DPR&&d>0.1){const f=(1-d/(90*S.DPR))*0.6*S.DPR; m.vx+=(dx/d)*f; m.vy+=(dy/d)*f;}
+      }
+      const sp=Math.hypot(m.vx,m.vy);
+      if(sp>vmax){m.vx=(m.vx/sp)*vmax; m.vy=(m.vy/sp)*vmax;}
+      m.x+=m.vx; m.y+=m.vy;
+      if(m.x<p+m.r||m.x>S.W-p-m.r){m.vx*=-1; m.x=Math.max(p+m.r,Math.min(S.W-p-m.r,m.x));}
+      if(m.y<p+m.r||m.y>S.H-p-m.r){m.vy*=-1; m.y=Math.max(p+m.r,Math.min(S.H-p-m.r,m.y));}
+      const hot=Math.min(1,Math.hypot(m.vx,m.vy)/(S.H*0.0065));
+      c.beginPath(); c.arc(m.x,m.y,m.r*S.DPR,0,TAU);
+      c.fillStyle="rgba(251,"+Math.round(146+hot*50)+","+Math.round(70+(1-hot)*120)+",0.95)";
+      c.shadowColor="rgba(251,146,60,0.8)"; c.shadowBlur=10*S.DPR; c.fill(); c.shadowBlur=0;
+    }
+  };
+};
+
+const light = (S) => {
+  const SPEC=["255,64,64","255,150,40","255,224,60","70,220,120","60,180,255","120,110,255","190,90,255"];
+  let apex={x:0,y:0},bl={x:0,y:0},br={x:0,y:0},hit={x:0,y:0},t=0;
+  S.setInit(()=>{
+    t=0;
+    const s=Math.min(S.W,S.H)*0.2, cX=S.W*0.26;
+    apex={x:cX,y:S.H*0.5-s}; bl={x:cX-s*0.7,y:S.H*0.5+s*0.7}; br={x:cX+s*0.7,y:S.H*0.5+s*0.7};
+    hit={x:(bl.x+apex.x)/2,y:(bl.y+apex.y)/2};
+  });
+  return ()=>{
+    const c=S.ctx; t+=0.02; c.clearRect(0,0,S.W,S.H);
+    const srcY=S.pointer.active
+      ? Math.max(S.H*0.1,Math.min(S.H*0.9,S.pointer.y))
+      : hit.y+Math.sin(t)*S.H*0.06;
+    const incidence=Math.atan2(hit.y-srcY,hit.x-0);
+    c.globalCompositeOperation="lighter";
+    c.strokeStyle="rgba(234,240,255,0.85)"; c.lineWidth=2.5*S.DPR;
+    c.shadowColor="rgba(234,240,255,0.7)"; c.shadowBlur=10*S.DPR;
+    c.beginPath(); c.moveTo(0,srcY); c.lineTo(hit.x,hit.y); c.stroke(); c.shadowBlur=0;
+    const base=0.12+incidence*0.35, spread=0.5;
+    for(let i=0;i<SPEC.length;i++){
+      const f=i/(SPEC.length-1), ang=base+f*spread, len=S.W*0.26;
+      const ex=hit.x+Math.cos(ang)*len, ey=hit.y+Math.sin(ang)*len;
+      c.strokeStyle="rgba("+SPEC[i]+",0.8)"; c.lineWidth=2.2*S.DPR;
+      c.shadowColor="rgba("+SPEC[i]+",0.6)"; c.shadowBlur=8*S.DPR;
+      c.beginPath(); c.moveTo(hit.x,hit.y); c.lineTo(ex,ey); c.stroke();
+    }
+    c.shadowBlur=0; c.globalCompositeOperation="source-over";
+    c.beginPath(); c.moveTo(apex.x,apex.y); c.lineTo(bl.x,bl.y); c.lineTo(br.x,br.y); c.closePath();
+    const pg=c.createLinearGradient(bl.x,apex.y,br.x,br.y);
+    pg.addColorStop(0,"rgba(167,139,250,0.12)"); pg.addColorStop(1,"rgba(34,211,238,0.12)");
+    c.fillStyle=pg; c.fill();
+    c.strokeStyle="rgba(200,220,255,0.55)"; c.lineWidth=1.6*S.DPR; c.stroke();
+  };
+};
+
+const SCENES = { field, projectile, astronomy, gas, light };
+
+function createScene(name, canvas) {
+  const ctx = canvas.getContext("2d");
+  const parent = canvas.parentElement;
+  let W=0,H=0,DPR=1,init=null;
+  const pointer = {x:-9999,y:-9999,active:false};
+  const S = {
+    ctx, get W(){return W;}, get H(){return H;}, get DPR(){return DPR;},
+    pointer, setInit(f){init=f;},
+  };
+  const draw = SCENES[name](S);
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=canvas.width=parent.clientWidth*DPR;
+    H=canvas.height=parent.clientHeight*DPR;
+    canvas.style.width=parent.clientWidth+"px";
+    canvas.style.height=parent.clientHeight+"px";
+    if(init) init();
+  }
+  resize();
+  return {
+    resize, frame:draw,
+    setPointer(x,y,active){pointer.x=x*DPR;pointer.y=y*DPR;pointer.active=active;},
+    pointerDown(x,y){pointer.x=x*DPR;pointer.y=y*DPR;pointer.active=true;S.onDown?.(pointer.x,pointer.y);},
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Boot: wire panels to scenes and start animation loops
+// ─────────────────────────────────────────────────────────────
+const PANEL_SCENES = ["field","projectile","astronomy","gas","light","field"];
+
+(function boot(){
+  const doc   = document.getElementById("doc");
+  const panels = Array.from(document.querySelectorAll(".panel"));
+  const dotsEl = document.getElementById("dots");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // build nav dots
+  const dotBtns = panels.map((panel, i) => {
+    const btn = document.createElement("button");
+    btn.className = "dot-btn" + (i===0?" current":"");
+    btn.setAttribute("aria-label", "前往第 "+(i+1)+" 節");
+    btn.addEventListener("click", () => panel.scrollIntoView({behavior:"smooth"}));
+    dotsEl.appendChild(btn);
+    return btn;
+  });
+
+  // create scene controllers
+  const controllers = panels.map((panel, i) => {
+    const canvas = panel.querySelector("canvas");
+    const ctrl = createScene(PANEL_SCENES[i], canvas);
+    // pointer wiring
+    const toLocal = (e) => { const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
+    panel.addEventListener("pointermove", (e)=>{ const p=toLocal(e); ctrl.setPointer(p.x,p.y,true); });
+    panel.addEventListener("pointerleave", ()=>ctrl.setPointer(-9999,-9999,false));
+    panel.addEventListener("pointerdown", (e)=>{ const p=toLocal(e); ctrl.pointerDown(p.x,p.y); });
+    // resize observer
+    const ro = new ResizeObserver(()=>ctrl.resize());
+    ro.observe(panel);
+    return ctrl;
+  });
+
+  // intersection observer → active panel + reveal
+  let activeIndex = 0;
+  const io = new IntersectionObserver((entries) => {
+    for(const e of entries){
+      if(e.isIntersecting && e.intersectionRatio > 0.55){
+        const idx = Number(e.target.dataset.idx);
+        activeIndex = idx;
+        dotBtns.forEach((b,i)=>b.classList.toggle("current",i===idx));
+        e.target.classList.add("revealed");
+      }
+    }
+  }, {root:doc, threshold:[0,0.55,0.9]});
+  panels.forEach(p=>io.observe(p));
+
+  // animation loop: only run active panel
+  if(reduce){
+    controllers.forEach(c=>{c.resize();c.frame();});
+  } else {
+    let raf=0;
+    const loop = () => {
+      controllers[activeIndex]?.frame();
+      raf=requestAnimationFrame(loop);
+    };
+    raf=requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>

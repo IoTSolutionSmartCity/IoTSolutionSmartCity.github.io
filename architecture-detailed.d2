@@ -1,0 +1,114 @@
+direction: right
+
+# ───────── Actors ─────────
+student: Student
+admin: Admin / Teacher
+
+# ───────── Auth ─────────
+auth: Auth {
+  style.fill: "#E8F0FE"
+  google: Google Login
+  onboard: Onboarding
+  roles: Roles + Topic Access
+}
+
+# ───────── Student App ─────────
+app: Student App {
+  style.fill: "#FFFDE7"
+  dash: Dashboard {
+    style.bold: true
+  }
+
+  learn: Learn {
+    style.fill: "#E9F7EF"
+    notes: Notes (stepped)
+    cp: Checkpoint Quiz
+    gate: Section Gate
+    exp: Experiments
+    ws: Worksheets
+  }
+
+  practice: Practice {
+    style.fill: "#FDECEA"
+    gq: Topic Questions
+    pp: Past Papers
+    mistakes: Mistake Bank
+  }
+}
+
+# ───────── Admin Content Pipeline ─────────
+adminp: Admin Pipeline {
+  style.fill: "#F3E8FD"
+  upload: Upload PDF + Topic
+  crop: Crop Editor
+  bank: Question Bank {
+    dse: DSE
+    custom: Custom
+  }
+  quiz: Quiz Builder
+  noteedit: Note Editor
+  wsedit: Worksheet Editor
+}
+
+# ───────── External AI ─────────
+ai: DeepSeek API {
+  style.fill: "#E0F7FA"
+  vision: Auto-crop / Answer
+  classify: Topic Classify + OCR
+  grade: LQ Grade / Explain
+}
+
+# ───────── Storage ─────────
+store: Storage {
+  style.fill: "#ECEFF1"
+  db: SQLite {
+    shape: cylinder
+  }
+  content: Content JSON / MDX {
+    shape: page
+  }
+  assets: Crop Assets {
+    shape: page
+  }
+}
+
+# ── Auth flow ──
+student -> auth
+admin -> auth
+auth -> app.dash
+auth.roles -> app.dash: gated
+
+# ── Student flow ──
+app.dash -> app.learn
+app.dash -> app.practice
+app.learn.notes -> app.learn.cp
+app.learn.cp -> app.learn.gate: pass unlocks
+app.learn.notes -> app.learn.exp: embed
+app.learn.exp -> app.learn.ws: auto-fill
+app.learn.cp -> app.practice.mistakes: wrong
+app.practice.gq -> app.practice.mistakes: wrong
+
+# ── Admin pipeline flow ──
+admin -> adminp
+adminp.upload -> adminp.crop
+adminp.crop -> adminp.bank: apply -> drafts
+adminp.bank -> adminp.quiz: pick / random
+adminp.quiz -> app.learn.cp: quiz token
+adminp.noteedit -> app.learn.notes
+adminp.wsedit -> app.learn.ws
+
+# ── AI usage ──
+adminp.crop -> ai.vision
+adminp.bank -> ai.classify
+app.practice -> ai.grade
+
+# ── Persistence ──
+auth -> store.db
+app.practice -> store.db: attempts
+app.learn.cp -> store.db: attempts + mistakes
+app.learn -> store.content: read
+adminp.crop -> store.assets
+adminp.bank -> store.assets
+adminp.quiz -> store.content
+adminp.noteedit -> store.content
+adminp.wsedit -> store.content
