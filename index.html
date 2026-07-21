@@ -953,38 +953,63 @@ const interference = (S) => {
 /* Entry-only: a slow force-field of silk streamlines. Particles ride a drifting
    pseudo-noise field; trails accumulate additively into aurora-like ribbons. */
 const aurora = (S) => {
-  let ps=[], t=0, first=true;
-  // density from CSS-pixel area, so retina phones aren't quadruple-penalised
-  const N=()=>Math.min(900, Math.round((S.W*S.H)/(1400*S.DPR*S.DPR)));
-  // layered sines stand in for noise — smooth, cheap, no library
+  /* Stripe-mesh-style luminous orbs + bright streamlines riding the same field.
+     Everything is redrawn per frame (trail = stored history), so it looks
+     finished from the very first paint — no accumulation warm-up. */
+  let ps=[], t=0;
+  const ORBS=[
+    {c:[0,229,255],  r:.58, ox:.22, oy:.30, sx:.00023, sy:.00031, ph:0},
+    {c:[88,101,242], r:.52, ox:.72, oy:.24, sx:.00019, sy:.00027, ph:2.1},
+    {c:[167,139,250],r:.60, ox:.55, oy:.72, sx:.00026, sy:.00021, ph:4.2},
+    {c:[255,0,127],  r:.44, ox:.86, oy:.66, sx:.00031, sy:.00024, ph:1.3},
+    {c:[0,180,216],  r:.48, ox:.10, oy:.82, sx:.00021, sy:.00033, ph:3.4},
+  ];
   const angle=(x,y)=>{
     const s=1/(420*S.DPR);
-    return Math.sin(x*s*1.7 + t*0.31) + Math.cos(y*s*1.3 - t*0.23)
-         + Math.sin((x+y)*s*0.8 + t*0.17)*1.6;
+    return Math.sin(x*s*1.7 + t*0.9) + Math.cos(y*s*1.3 - t*0.7)
+         + Math.sin((x+y)*s*0.8 + t*0.5)*1.6;
   };
-  const PAL=[[0,229,255],[64,140,255],[122,92,255],[167,139,250],[255,0,127]];
-  const spawn=()=>{
-    const p=PAL[(Math.random()*PAL.length)|0];
-    return {x:Math.random()*S.W, y:Math.random()*S.H, c:p, life:120+Math.random()*260};
+  const TRAIL=14;
+  const spawn=()=>({x:Math.random()*S.W, y:Math.random()*S.H,
+                    life:150+Math.random()*250, tr:[]});
+  const step=(p)=>{
+    const a=angle(p.x,p.y), sp=1.9*S.DPR;
+    p.x+=Math.cos(a)*sp; p.y+=Math.sin(a)*sp;
+    p.tr.push([p.x,p.y]); if(p.tr.length>TRAIL) p.tr.shift();
+    if(--p.life<0 || p.x<-20||p.y<-20||p.x>S.W+20||p.y>S.H+20) Object.assign(p,spawn());
   };
-  S.setInit(()=>{ ps=Array.from({length:N()},spawn); t=0; first=true; });
+  S.setInit(()=>{
+    t=0;
+    ps=Array.from({length:Math.min(340,Math.round((S.W*S.H)/(3600*S.DPR*S.DPR))*4+80)},spawn);
+    for(let k=0;k<TRAIL;k++){ t+=0.006; for(const p of ps) step(p); }  // pre-warm trails
+  });
   return ()=>{
-    const c=S.ctx;
-    if(first){ c.fillStyle="#05060a"; c.fillRect(0,0,S.W,S.H); first=false; }
-    // long trails: veil the last frame instead of clearing it
+    const c=S.ctx; t+=0.006;
     c.globalCompositeOperation="source-over";
-    c.fillStyle="rgba(5,6,10,0.045)"; c.fillRect(0,0,S.W,S.H);
-    t+=0.004;
+    c.fillStyle="#05060a"; c.fillRect(0,0,S.W,S.H);
+    // luminous orbs, drifting on independent orbits
     c.globalCompositeOperation="lighter";
-    c.lineWidth=1.1*S.DPR; c.lineCap="round";
-    const sp=1.35*S.DPR;
+    const now=performance.now(), min=Math.min(S.W,S.H);
+    for(const o of ORBS){
+      const x=(o.ox+Math.sin(now*o.sx+o.ph)*.13)*S.W;
+      const y=(o.oy+Math.cos(now*o.sy+o.ph)*.15)*S.H;
+      const r=o.r*min;
+      const g=c.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,"rgba("+o.c[0]+","+o.c[1]+","+o.c[2]+",0.5)");
+      g.addColorStop(.55,"rgba("+o.c[0]+","+o.c[1]+","+o.c[2]+",0.14)");
+      g.addColorStop(1,"rgba("+o.c[0]+","+o.c[1]+","+o.c[2]+",0)");
+      c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,TAU); c.fill();
+    }
+    // bright streamlines riding the field, trail from stored history
+    c.lineCap="round";
     for(const p of ps){
-      const a=angle(p.x,p.y);
-      const nx=p.x+Math.cos(a)*sp, ny=p.y+Math.sin(a)*sp;
-      c.strokeStyle="rgba("+p.c[0]+","+p.c[1]+","+p.c[2]+",0.085)";
-      c.beginPath(); c.moveTo(p.x,p.y); c.lineTo(nx,ny); c.stroke();
-      p.x=nx; p.y=ny;
-      if(--p.life<0 || p.x<-20||p.y<-20||p.x>S.W+20||p.y>S.H+20) Object.assign(p,spawn());
+      step(p);
+      for(let k=1;k<p.tr.length;k++){
+        const f=k/p.tr.length;
+        c.strokeStyle="rgba(255,255,255,"+(f*f*0.5).toFixed(3)+")";
+        c.lineWidth=f*1.8*S.DPR;
+        c.beginPath(); c.moveTo(p.tr[k-1][0],p.tr[k-1][1]); c.lineTo(p.tr[k][0],p.tr[k][1]); c.stroke();
+      }
     }
     c.globalCompositeOperation="source-over";
   };
