@@ -1075,10 +1075,13 @@ let hideT=null, lastCount=0;
 /* Point the panel's collapsed state at the trigger, so it grows out of the button
    and shrinks back into it instead of just fading in place. */
 function anchorToButton(){
-  const b=waitBtn.getBoundingClientRect(), t=toast.getBoundingClientRect();
+  const b=waitBtn.getBoundingClientRect();
   if(!b.width) return;                                  // trigger not shown yet
-  toast.style.setProperty("--dx",(b.left+b.width/2)-(t.left+t.width/2)+"px");
-  toast.style.setProperty("--dy",(b.top+b.height/2)-(t.top+t.height/2)+"px");
+  // The panel's own rect can't be measured here — it is mid-transform, and
+  // getBoundingClientRect reports the *transformed* box. But the scrim centres it,
+  // so its resting centre is the viewport centre.
+  toast.style.setProperty("--dx",(b.left+b.width/2)-innerWidth/2+"px");
+  toast.style.setProperty("--dy",(b.top+b.height/2)-innerHeight/2+"px");
 }
 
 function closePopup(){
