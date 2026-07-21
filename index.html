@@ -4,483 +4,660 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>PhysicsEasy | HKDSE 物理學習平台</title>
-<meta name="description" content="HKDSE 物理科互動學習平台：概念筆記、歷屆試題、錯誤追蹤及高保真 3D 模擬。" />
+<meta name="description" content="HKDSE 物理科互動學習平台：概念筆記、歷屆試題、錯題追蹤與高保真模擬。" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <style>
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-a { color: inherit; text-decoration: none; }
-button { font: inherit; }
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth}
+a{color:inherit;text-decoration:none}
+button{font:inherit;background:none;border:none;color:inherit}
 
-/* ── Canvas ── */
-.landing-canvas {
-  position: absolute; inset: 0; display: block;
-  width: 100%; height: 100%; z-index: 0;
+:root{
+  --background:#000;
+  --foreground:#fff;
+  --font-sans:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",ui-sans-serif,system-ui,sans-serif;
+  --serif:"Instrument Serif","Noto Serif TC",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
 }
-
-/* ── Root doc ── */
-.doc {
-  --velocity: #22d3ee;
-  --force:    #fb923c;
-  --elective: #a78bfa;
-  --star:     #ffd27a;
-  --ink:      #0b1020;
-  --line:     #26304f;
-  --fg:       #eaf0ff;
-  --muted:    #9aa6cf;
-  --display:  "Space Grotesk", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-  --mono:     "JetBrains Mono", ui-monospace, monospace;
-  --body:     "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-
-  height: 100dvh;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  background: var(--ink);
-  color: var(--fg);
-  font-family: var(--body);
-  -webkit-font-smoothing: antialiased;
+body{
+  background-color:var(--background); color:var(--foreground);
+  font-family:var(--font-sans); -webkit-font-smoothing:antialiased;
+  letter-spacing:-0.01em; overflow-x:hidden;
 }
-.doc::-webkit-scrollbar { width: 0; }
+::selection{background:#fff;color:#000}
 
-/* ── Brand bar ── */
-.brandbar {
-  position: fixed; z-index: 20;
-  top: 0; left: 0; right: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.05rem clamp(1.25rem, 5vw, 4rem);
-  font-family: var(--mono);
-  font-size: 0.74rem; letter-spacing: 0.26em; text-transform: uppercase;
-  background: linear-gradient(rgba(11,16,32,0.72), transparent);
+/* ── Liquid glass (motionsites-style) ── */
+.liquid-glass{
+  background:rgba(255,255,255,0.01);
+  background-blend-mode:luminosity;
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+  border:none;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,0.1);
+  position:relative; overflow:hidden;
 }
-.brand { display: flex; align-items: center; gap: 0.55rem; color: var(--velocity); }
-.dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--velocity);
-  box-shadow: 0 0 10px 2px rgba(34,211,238,0.7);
+.liquid-glass::before{
+  content:""; position:absolute; inset:0; border-radius:inherit; padding:1.4px;
+  background:linear-gradient(180deg,
+    rgba(255,255,255,.45) 0%, rgba(255,255,255,.15) 20%,
+    rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+    rgba(255,255,255,.15) 80%, rgba(255,255,255,.45) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  pointer-events:none;
+}
+.glass-pill{
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(16px) saturate(180%);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  border-radius:9999px;
+  box-shadow:none !important;
 }
 
-/* ── Nav dots ── */
-.dots {
-  position: fixed; z-index: 20;
-  right: clamp(0.8rem, 2.4vw, 1.8rem);
-  top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 0.75rem;
+/* ══════════ Loading screen ══════════ */
+#loader{
+  position:fixed; inset:0; z-index:9999; background:#000;
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:1.6rem clamp(1.25rem,5vw,3rem);
+  transition:opacity .6s ease, visibility .6s;
 }
-.dot-btn {
-  width: 9px; height: 9px; padding: 0; border-radius: 50%;
-  cursor: pointer; border: 1px solid var(--muted);
-  background: transparent; transition: all 0.25s;
+#loader.done{opacity:0; visibility:hidden; pointer-events:none}
+.ld-top{
+  font-family:var(--mono); font-size:10px; letter-spacing:.3em;
+  text-transform:uppercase; color:rgba(255,255,255,.45);
+  animation:up .7s cubic-bezier(.16,1,.3,1) both;
 }
-.dot-btn.current {
-  background: var(--velocity); border-color: var(--velocity);
-  box-shadow: 0 0 10px 1px rgba(34,211,238,0.7);
-  transform: scale(1.25);
+.ld-mid{
+  flex:1; display:grid; place-items:center;
+  font-family:var(--serif); font-style:italic;
+  font-size:clamp(2rem,7vw,4.5rem); color:rgba(255,255,255,.8);
 }
-@media (max-width: 820px) { .dots { display: none; } }
+.ld-word{animation:wordIn .45s cubic-bezier(.16,1,.3,1)}
+@keyframes wordIn{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+.ld-count{
+  align-self:flex-end; font-family:var(--serif);
+  font-size:clamp(3.4rem,12vw,7rem); line-height:1;
+  font-variant-numeric:tabular-nums; color:#fff;
+}
+.ld-bar{height:3px; background:rgba(255,255,255,.08); margin-top:1.1rem}
+.ld-bar>i{
+  display:block; height:100%; width:100%; transform-origin:left; transform:scaleX(0);
+  background:linear-gradient(90deg,#89AACC,#4E85BF);
+  box-shadow:0 0 8px rgba(137,170,204,.35);
+}
 
-/* ── Panels ── */
-.panel {
-  position: relative; min-height: 100dvh;
-  scroll-snap-align: start; overflow: hidden;
-  display: grid; align-items: center;
+/* ══════════ Nav ══════════ */
+nav{
+  position:fixed; top:0; left:0; right:0; z-index:60;
+  display:flex; justify-content:center; padding:1rem 1.25rem;
+  animation:navIn .8s .1s cubic-bezier(.16,1,.3,1) both;
 }
-.panel[data-accent="velocity"] { --accent: var(--velocity); --accentRgb: 34,211,238; }
-.panel[data-accent="star"]     { --accent: var(--star);     --accentRgb: 255,210,122; }
-.panel[data-accent="force"]    { --accent: var(--force);    --accentRgb: 251,146,60; }
-.panel[data-accent="elective"] { --accent: var(--elective); --accentRgb: 167,139,250; }
+@keyframes navIn{from{transform:translateY(-20px);opacity:0}to{transform:none;opacity:1}}
+.nav-inner{
+  border-radius:9999px; padding:.7rem 1.4rem;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:2rem; max-width:64rem; width:100%;
+  transition:box-shadow .4s, background .4s;
+}
+nav.stuck .nav-inner{background:rgba(255,255,255,.055); box-shadow:0 10px 40px -18px rgba(0,0,0,.9)}
+.brand{display:flex; align-items:center; gap:.5rem; font-weight:600; font-size:1.02rem}
+.nav-left{display:flex; align-items:center; gap:2rem}
+.nav-links{display:none; align-items:center; gap:1.8rem; color:rgba(255,255,255,.75); font-size:.86rem; font-weight:500}
+.nav-links a{transition:color .3s}
+.nav-links a:hover{color:#fff}
+.nav-right{display:flex; align-items:center; gap:1rem}
+.btn-text{font-size:.86rem; font-weight:500; cursor:pointer; transition:color .3s}
+.btn-text:hover{color:rgba(255,255,255,.65)}
+.btn-glass{border-radius:9999px; padding:.5rem 1.4rem; font-size:.86rem; font-weight:500; cursor:pointer; transition:opacity .3s}
+.btn-glass:hover{opacity:.85}
+@media(min-width:820px){.nav-links{display:flex}}
 
-.veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.panel[data-align="left"]  .veil {
+/* ══════════ Hero ══════════ */
+.hero{
+  position:relative; height:100dvh; min-height:600px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.bg{position:absolute; inset:0; overflow:hidden; pointer-events:none}
+.bg canvas{display:block; width:100%; height:100%; opacity:0; transition:opacity .7s ease}
+.bg canvas.on{opacity:1}
+/* ponytail: edges only — the centre stays clear so the simulation reads */
+.vignette{
+  position:absolute; inset:0; pointer-events:none;
   background:
-    linear-gradient(90deg, rgba(11,16,32,0.6), transparent 62%),
-    radial-gradient(60% 60% at 82% 34%, rgba(var(--accentRgb),0.1), transparent);
+    radial-gradient(115% 80% at 50% 50%, rgba(0,0,0,0) 30%, rgba(0,0,0,.35) 72%, rgba(0,0,0,.72) 100%),
+    linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,0) 20%, rgba(0,0,0,0) 62%, #000);
 }
-.panel[data-align="right"] .veil {
-  background:
-    linear-gradient(90deg, transparent 38%, rgba(11,16,32,0.6)),
-    radial-gradient(60% 60% at 24% 40%, rgba(var(--accentRgb),0.12), transparent);
+.hero-body{
+  position:relative; z-index:10; flex:1; min-height:0;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  padding:5rem clamp(1.25rem,5vw,3.5rem) 0; text-align:left;
 }
-.panel[data-kind="hero"]  .veil,
-.panel[data-kind="cta"]   .veil {
-  background: radial-gradient(60% 60% at 50% 45%, rgba(34,211,238,0.08), transparent);
+.hero-inner{max-width:52rem; width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:1.3rem}
+.tagline{
+  margin:0; font-family:var(--mono); color:rgba(255,255,255,.8);
+  font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase;
+  animation:up .8s .1s cubic-bezier(.16,1,.3,1) both;
+}
+h1{
+  font-family:var(--serif); font-weight:500; letter-spacing:-.035em; line-height:.98;
+  font-size:clamp(2.6rem,8.5vw,92px); margin:0; max-width:none;
+  color:#fff; text-shadow:0 2px 40px rgba(0,0,0,.85);
+  animation:up 1s cubic-bezier(.16,1,.3,1) both;
+}
+.hl{display:block}
+.hl+.hl{margin-left:clamp(1.2rem,9vw,9rem)}
+.sub{
+  margin:0; max-width:26rem; font-size:.9rem; line-height:1.8; font-weight:300;
+  color:rgba(255,255,255,.72); text-shadow:0 1px 20px rgba(0,0,0,.8);
+  animation:up 1s .2s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.swap{animation:swapIn .55s cubic-bezier(.16,1,.3,1)}
+@keyframes swapIn{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+
+/* corner readouts — securify-style diagonal rules, keeps the centre clear */
+.stats{
+  position:absolute; z-index:15; right:clamp(1.25rem,5vw,5rem); top:22%;
+  display:flex; flex-direction:column; align-items:flex-end; gap:1.5rem;
+  animation:up 1s .35s cubic-bezier(.16,1,.3,1) both;
+}
+.stat{display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; text-align:right}
+.stat .row{display:flex; align-items:center; gap:.9rem}
+.stat .rule{display:none; height:1px; width:4.5rem; background:rgba(255,255,255,.4); transform:rotate(-20deg)}
+.stat b{
+  font-family:var(--serif); font-weight:400; letter-spacing:-.02em;
+  font-size:clamp(1.5rem,3.4vw,2.5rem); color:#fff; text-shadow:0 2px 24px rgba(0,0,0,.8);
+}
+.stat span{font-family:var(--mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.55)}
+@media(min-width:900px){.stat .rule{display:block}}
+@media(max-width:760px){.stats{position:static; flex-direction:row; align-items:flex-start; gap:1.4rem; flex-wrap:wrap}
+  .stat,.stat span{text-align:left; align-items:flex-start}}
+
+.cta{min-height:50px; display:flex; justify-content:flex-start; animation:up 1s .4s cubic-bezier(.16,1,.3,1) both}
+.waitcount{
+  margin:-.4rem 0 0; font-family:var(--mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:rgba(255,255,255,.5);
+  display:flex; align-items:center; gap:.5rem;
+  opacity:0; transition:opacity .6s ease;
+}
+.waitcount.on{opacity:1}
+.waitcount::before{content:""; width:5px; height:5px; border-radius:50%; background:#4ade80; box-shadow:0 0 8px rgba(74,222,128,.8)}
+.cta-btn{
+  padding:.75rem 2.5rem; font-size:14px; font-weight:500;
+  border:1px solid rgba(255,255,255,.1); border-radius:9999px;
+  color:rgba(255,255,255,.9); backdrop-filter:blur(4px); cursor:pointer;
+  transition:border-color .3s,background .3s;
+}
+.cta-btn:hover{border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.02)}
+.cta-form{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.375rem .375rem .375rem 1.25rem; font-size:14px; font-weight:500;
+  border:1px solid rgba(255,255,255,.2); border-radius:9999px;
+  background:rgba(255,255,255,.02); backdrop-filter:blur(4px);
+  width:100%; max-width:340px; transition:border-color .3s;
+}
+.cta-form:focus-within{border-color:rgba(255,255,255,.4)}
+.cta-form input{flex:1; min-width:0; background:none; border:none; outline:none; color:#fff; font:inherit; font-family:var(--font-sans)}
+.cta-form input::placeholder{color:rgba(255,255,255,.45)}
+.cta-send{
+  width:34px; height:34px; border-radius:9999px; flex-shrink:0;
+  background:rgba(255,255,255,.1); display:grid; place-items:center; cursor:pointer; transition:background .3s;
+}
+.cta-send:hover{background:rgba(255,255,255,.18)}
+.pop{animation:pop .2s ease}
+@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+
+/* ── Topic rail ── */
+.rail{
+  position:relative; z-index:20; padding:0 1.5rem 1.5rem;
+  display:flex; flex-direction:column; align-items:center; gap:.8rem;
+  animation:up 1s .6s cubic-bezier(.16,1,.3,1) both;
+}
+.hint{font-family:var(--mono); font-size:9.5px; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.34)}
+.pills{display:flex; gap:.4rem; padding:.35rem; border-radius:9999px; max-width:100%; overflow-x:auto; scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{
+  white-space:nowrap; border-radius:9999px; padding:.5rem 1.05rem;
+  font-size:.8rem; font-weight:500; color:rgba(255,255,255,.55);
+  cursor:pointer; transition:color .3s,background .3s;
+}
+.pill:hover{color:rgba(255,255,255,.9)}
+.pill.on{color:#000; background:#fff}
+.scrollcue{
+  display:flex; flex-direction:column; align-items:center; gap:.4rem; margin-top:.2rem;
+  font-family:var(--mono); font-size:9px; letter-spacing:.24em; text-transform:uppercase; color:rgba(255,255,255,.3);
+}
+.scrollcue i{display:block; width:1px; height:26px; background:rgba(255,255,255,.16); position:relative; overflow:hidden}
+.scrollcue i::after{
+  content:""; position:absolute; inset:0; background:#fff;
+  animation:cue 1.7s ease-in-out infinite;
+}
+@keyframes cue{0%{transform:translateY(-100%)}100%{transform:translateY(200%)}}
+
+/* ══════════ Sections ══════════ */
+section.band{position:relative; z-index:2; background:#000; padding:6rem 1.5rem}
+.wrap{max-width:72rem; margin:0 auto}
+.eyebrow{
+  display:flex; align-items:center; gap:.7rem; margin:0 0 1.2rem;
+  font-family:var(--mono); font-size:10px; letter-spacing:.28em;
+  text-transform:uppercase; color:rgba(255,255,255,.45);
+}
+.eyebrow::before{content:""; width:1.8rem; height:1px; background:rgba(255,255,255,.25)}
+h2{
+  font-family:var(--serif); font-weight:400; letter-spacing:-.01em; line-height:1.16;
+  font-size:clamp(1.9rem,5vw,3.3rem); margin:0; max-width:22ch;
+}
+h2 em{font-style:italic; color:rgba(255,255,255,.72)}
+.lede{max-width:34rem; margin:1.1rem 0 0; font-size:.94rem; line-height:1.85; font-weight:300; color:rgba(255,255,255,.55)}
+
+/* reveal on scroll */
+.reveal{opacity:0; transform:translateY(28px); filter:blur(8px);
+  transition:opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1), filter .9s ease;
+  transition-delay:var(--d,0s);
+}
+.reveal.in{opacity:1; transform:none; filter:none}
+
+/* bento */
+.bento{display:grid; grid-template-columns:repeat(12,1fr); gap:1rem; margin-top:3rem}
+.cell{
+  grid-column:span 12; border-radius:1.4rem; padding:1.6rem;
+  display:flex; flex-direction:column; gap:.6rem; min-height:180px;
+  transition:transform .6s cubic-bezier(.22,1,.36,1);
+}
+.cell:hover{transform:translateY(-6px)}
+.cell h3,.cell p,.cell .idx{position:relative; z-index:2}
+.cell h3{margin:0; font-size:1.02rem; font-weight:600; letter-spacing:-.015em}
+.cell p{margin:0; font-size:.86rem; line-height:1.75; font-weight:300; color:rgba(255,255,255,.52); max-width:30ch}
+.cell .idx{font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:rgba(255,255,255,.3); margin-bottom:auto}
+/* per-card motif: line art + a tint pulled from the topic accents */
+.cell .glow{position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(130% 110% at 100% 100%, rgba(var(--tint),.18), transparent 62%)}
+.cell .art{
+  position:absolute; right:-8px; bottom:-14px; width:140px; height:140px; z-index:1;
+  color:rgb(var(--tint)); opacity:.3; pointer-events:none;
+  transition:opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1);
+}
+.cell.wide .art{width:190px; height:190px}
+.cell:hover .art{opacity:.6; transform:scale(1.07) translate(-4px,-4px)}
+.cell.wide{min-height:230px}
+@media(min-width:760px){
+  .cell{grid-column:span 4}
+  .cell.wide{grid-column:span 8}
 }
 
-/* ── Hero / CTA ── */
-.panel[data-kind="hero"], .panel[data-kind="cta"] { place-items: center; text-align: center; }
-.panel[data-kind="hero"] { cursor: crosshair; }
-.center {
-  position: relative; z-index: 3;
-  padding: 2rem clamp(1.25rem, 5vw, 4rem); max-width: 46rem;
-}
-.panel[data-kind="hero"] .center { pointer-events: none; }
+/* number strip */
+.nums{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; margin-top:3rem}
+.num{border-radius:1.4rem; padding:1.8rem 1.5rem}
+.num b{display:block; font-family:var(--serif); font-size:clamp(2.4rem,6vw,3.4rem); font-weight:400; line-height:1}
+.num span{display:block; margin-top:.6rem; font-family:var(--mono); font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.4)}
 
-.badge {
-  font-family: var(--mono); font-size: 0.72rem;
-  letter-spacing: 0.3em; text-transform: uppercase;
-  color: var(--velocity); border: 1px solid rgba(34,211,238,0.3);
-  border-radius: 999px; padding: 0.4rem 1rem;
-  background: rgba(34,211,238,0.06);
-}
-.center h1 {
-  font-family: var(--display); font-weight: 700;
-  letter-spacing: -0.02em; line-height: 1.02;
-  margin: 1.6rem 0 0;
-  font-size: clamp(2.7rem, 8vw, 6rem);
-  text-wrap: balance;
-  text-shadow: 0 2px 40px rgba(11,16,32,0.9);
-}
-.center h2 {
-  font-family: var(--display); font-weight: 700;
-  letter-spacing: -0.02em; line-height: 1.05;
-  margin: 1rem 0 0; font-size: clamp(2.3rem, 6vw, 4.2rem);
-}
-.grad {
-  background: linear-gradient(100deg, var(--velocity), #a5f3fc 45%, var(--force));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.center .lede {
-  color: var(--muted); font-size: clamp(1rem, 1.9vw, 1.2rem);
-  line-height: 1.7; margin: 1.5rem auto 0; max-width: 33rem;
-  text-shadow: 0 2px 24px rgba(11,16,32,0.9);
+/* stack list */
+.stack{display:flex; flex-wrap:wrap; gap:.45rem; margin-top:2.4rem}
+.chip{
+  font-size:.76rem; font-weight:400; color:rgba(255,255,255,.66);
+  padding:.45rem 1rem; border-radius:9999px;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.02);
 }
 
-/* ── Experiment sections ── */
-.panel[data-kind="exp"] {
-  grid-template-columns: 1.05fr 1fr; gap: 2rem;
-  padding: clamp(4.5rem,10vh,7rem) clamp(1.25rem,5vw,4rem);
+/* ══════════ Waitlist odometer ══════════ */
+#waitlist{display:none; text-align:center}
+#waitlist.on{display:block}
+.odo-stage{perspective:1400px; display:flex; justify-content:center; padding:1.6rem 0 .6rem}
+.odo{
+  display:flex; gap:.06em; transform-style:preserve-3d;
+  transform:rotateX(var(--rx,8deg)) rotateY(var(--ry,-10deg));
+  transition:transform .45s cubic-bezier(.22,1,.36,1);
+  font-family:var(--serif); font-weight:400; line-height:1;
+  font-size:clamp(3.6rem,17vw,10rem);
 }
-.panel[data-kind="exp"][data-align="right"] { grid-template-columns: 1fr 1.05fr; }
-.panel[data-kind="exp"][data-align="right"] .copy { grid-column: 2; }
+.digit{
+  position:relative; width:.60em; height:1em; overflow:hidden; border-radius:.07em;
+  transform-style:preserve-3d;
+  background:linear-gradient(180deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.02) 48%,
+    rgba(0,0,0,.35) 52%, rgba(255,255,255,.045) 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.35), inset 0 -1px 1px rgba(255,255,255,.12),
+    inset 0 0 24px rgba(34,211,238,.14), 0 30px 70px -28px rgba(34,211,238,.65);
+}
+.digit::after{ /* seam + glare, sells the drum */
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:linear-gradient(180deg, rgba(255,255,255,.16), transparent 42%, transparent 58%, rgba(0,0,0,.28)),
+    linear-gradient(180deg, transparent 49.4%, rgba(255,255,255,.22) 50%, transparent 50.6%);
+}
+.digit .col{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  transform:translateY(0);
+  transition:transform 1.6s cubic-bezier(.16,1,.3,1); transition-delay:var(--dd,0s);
+}
+.digit .col b{
+  height:1em; width:100%; display:flex; align-items:center; justify-content:center;
+  font-weight:400;
+  background:linear-gradient(180deg,#fff 0%,#dff6ff 42%,rgba(255,255,255,.5) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.odo-label{
+  margin:1.4rem 0 0; font-family:var(--mono); font-size:10px; letter-spacing:.26em;
+  text-transform:uppercase; color:rgba(255,255,255,.5);
+}
+.odo-cta{margin-top:2.2rem}
+@media(prefers-reduced-motion:reduce){.odo,.digit .col{transition:none}}
 
-.copy {
-  position: relative; z-index: 3; max-width: 34rem;
-  opacity: 0; transform: translateY(30px);
-  transition: opacity 0.85s ease, transform 0.85s ease;
+/* ══════════ Watermark CTA ══════════ */
+.mark-sec{position:relative; z-index:2; background:#000; padding:7rem 1.25rem 5rem; text-align:center; overflow:hidden}
+.mark{
+  font-family:var(--serif); font-weight:400; line-height:.94; letter-spacing:-.03em;
+  font-size:clamp(3rem,13vw,10rem);
+  display:flex; flex-direction:column; align-items:center;
+  filter:url(#pe-noise);
 }
-.panel.revealed .copy { opacity: 1; transform: none; }
+.mark .l1{color:#fff}
+.mark .l2{
+  background:linear-gradient(to right,#0a1020 0%,#0B2551 22%,#A4F4FD 58%,#22d3ee 100%);
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent;
+}
+.mark-cta{display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap; margin-top:2.6rem}
+.b-solid{background:#fff; color:#000; border-radius:9999px; padding:.8rem 2rem; font-size:.86rem; font-weight:600; cursor:pointer; transition:transform .25s, box-shadow .3s}
+.b-solid:hover{transform:scale(1.02); box-shadow:0 10px 30px -10px rgba(255,255,255,.35)}
+.b-line{border:1px solid rgba(255,255,255,.18); border-radius:9999px; padding:.8rem 1.8rem; font-size:.86rem; font-weight:500; cursor:pointer; transition:background .3s,border-color .3s}
+.b-line:hover{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.35)}
+@media(max-width:900px){.mark{filter:none} .mark .l2{-webkit-text-fill-color:#22d3ee; color:#22d3ee; background:none}}
 
-.kicker {
-  color: var(--accent); font-family: var(--mono);
-  font-size: 0.76rem; letter-spacing: 0.3em; text-transform: uppercase;
-  display: flex; align-items: center; gap: 0.7rem; margin: 0 0 1.1rem;
+/* ══════════ Marquee + footer ══════════ */
+.marquee{position:relative; z-index:2; background:#000; overflow:hidden; padding:2.2rem 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:1px solid rgba(255,255,255,.07)}
+.marquee-track{display:flex; width:max-content; animation:slide 38s linear infinite}
+.marquee span{
+  font-family:var(--serif); font-size:clamp(1.4rem,3.6vw,2.4rem);
+  color:rgba(255,255,255,.14); white-space:nowrap; padding-right:2.5rem;
 }
-.num {
-  background: currentColor; border-radius: 5px;
-  padding: 0.12rem 0.5rem; display: inline-flex;
-}
-.num > span { color: #0a1220; font-weight: 700; }
-.copy h2 {
-  font-family: var(--display); font-weight: 700;
-  letter-spacing: -0.02em; line-height: 1.05;
-  font-size: clamp(2.2rem, 5vw, 3.9rem); margin: 0; text-wrap: balance;
-}
-.hl { color: var(--accent); }
-.copy p {
-  color: var(--muted); font-size: clamp(1rem, 1.7vw, 1.16rem);
-  line-height: 1.7; margin: 1.3rem 0 0; max-width: 30rem;
-}
-.readout { display: flex; gap: 1.7rem; margin-top: 1.8rem; font-family: var(--mono); flex-wrap: wrap; }
-.readout > div { display: flex; flex-direction: column; gap: 0.25rem; }
-.readout b { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.readout span { font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-.ihint {
-  margin-top: 1.6rem; font-family: var(--mono);
-  font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--accent); display: flex; align-items: center; gap: 0.5rem;
-}
-.ihint::before { content: ""; width: 1.4rem; height: 1px; background: var(--accent); }
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
-/* ── Buttons ── */
-.btnrow {
-  display: flex; gap: 0.9rem; margin-top: 2.3rem;
-  flex-wrap: wrap; justify-content: center; pointer-events: auto;
-}
-.btn {
-  font: 600 1rem var(--body); border-radius: 999px;
-  padding: 0.95rem 1.7rem; cursor: pointer; border: 1px solid transparent;
-  display: inline-flex; gap: 0.65rem; align-items: center;
-  text-decoration: none;
-  transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
-}
-.btn:focus-visible { outline: 2px solid var(--velocity); outline-offset: 3px; }
-.btn.primary { background: var(--fg); color: #0a1a2f; }
-.btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px -14px rgba(34,211,238,0.75); }
-.btn.ghost {
-  background: rgba(234,240,255,0.05); color: var(--fg);
-  border: 1px solid var(--line);
-}
-.btn.ghost:hover { border-color: var(--velocity); transform: translateY(-2px); }
+footer{position:relative; z-index:2; background:#000; padding:3rem 1.5rem 2.6rem}
+.foot{max-width:72rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center; justify-content:space-between;
+  font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.35)}
+.live{display:flex; align-items:center; gap:.5rem}
+.live i{width:6px; height:6px; border-radius:50%; background:#4ade80; animation:pulse 1.9s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,.5)}50%{opacity:.6;box-shadow:0 0 0 5px rgba(74,222,128,0)}}
+.foot a:hover{color:#fff}
 
-.brandcta {
-  font: inherit; letter-spacing: 0.12em; cursor: pointer;
-  background: var(--fg); color: #0a1a2f; border: 0;
-  border-radius: 999px; padding: 0.55rem 1.05rem;
-  text-decoration: none;
-}
-
-/* ── Hero hints ── */
-.hint {
-  position: absolute; z-index: 3;
-  left: 50%; bottom: 4.2rem; transform: translateX(-50%);
-  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.2em;
-  text-transform: uppercase; color: var(--muted);
-}
-.scrollhint {
-  position: absolute; z-index: 3;
-  left: 50%; bottom: 1.5rem; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.2em;
-  text-transform: uppercase; color: var(--muted);
-}
-.mark {
-  width: 1px; height: 24px;
-  background: linear-gradient(var(--velocity), transparent);
-  animation: landing-drop 1.8s infinite;
-}
-@keyframes landing-drop {
-  0%   { transform: scaleY(0); transform-origin: top; }
-  50%  { transform: scaleY(1); transform-origin: top; }
-  51%  { transform-origin: bottom; }
-  100% { transform: scaleY(0); transform-origin: bottom; }
-}
-
-@media (max-width: 820px) {
-  .panel[data-kind="exp"],
-  .panel[data-kind="exp"][data-align="right"] { grid-template-columns: 1fr; }
-  .panel[data-kind="exp"][data-align="right"] .copy { grid-column: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .copy { opacity: 1; transform: none; transition: none; }
-  .mark { animation: none; }
-  .doc { scroll-behavior: auto; }
-  .panel[data-kind="hero"] { cursor: default; }
+@media(max-height:640px){.sub,.stats{display:none} .hero-inner{gap:1.1rem}}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;filter:none;transition:none}
+  .marquee-track,.scrollcue i::after,.live i{animation:none}
 }
 </style>
 </head>
 <body>
 
-<div class="doc" id="doc">
+<!-- grain filter for the watermark headline -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="pe-noise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" stitchTiles="stitch"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.09"/></feComponentTransfer>
+    <feComposite in2="SourceGraphic" operator="in" result="noise"/>
+    <feBlend in="SourceGraphic" in2="noise" mode="overlay"/>
+  </filter>
+</svg>
 
-  <!-- Brand bar -->
-  <div class="brandbar">
-    <div class="brand">
-      <span class="dot"></span> PhysicsEasy
+<!-- ══════════ Loading ══════════ -->
+<div id="loader">
+  <div class="ld-top">PhysicsEasy</div>
+  <div class="ld-mid"><span class="ld-word" id="ldWord">觀察</span></div>
+  <div>
+    <div class="ld-count" id="ldCount" style="text-align:right">000</div>
+    <div class="ld-bar"><i id="ldBar"></i></div>
+  </div>
+</div>
+
+<!-- ══════════ Nav ══════════ -->
+<nav id="nav">
+  <div class="nav-inner liquid-glass glass-pill">
+    <div class="nav-left">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+          <ellipse cx="12" cy="12" rx="10" ry="4.4"/>
+          <ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/>
+          <ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/>
+        </svg>
+        <span>PhysicsEasy</span>
+      </div>
+      <div class="nav-links">
+        <a href="#platform">平台</a><a href="#numbers">數據</a><a href="#stack">技術</a><a href="#start">開始</a>
+      </div>
     </div>
-    <span class="brandcta" style="pointer-events:none;opacity:0.4;cursor:default;">即將推出</span>
+    <div class="nav-right">
+      <button class="btn-text">註冊</button>
+      <button class="btn-glass liquid-glass">登入</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════ Hero ══════════ -->
+<section class="hero">
+  <div class="bg" id="bg"><canvas id="cv"></canvas></div>
+  <div class="vignette"></div>
+
+  <div class="hero-body">
+    <div class="hero-inner">
+      <p class="tagline" id="tagline">HKDSE 物理 · 互動學習平台</p>
+      <h1 id="head">看得見的物理<br />才學得會</h1>
+      <p class="sub" id="sub">拋體、天體、氣體、光、電磁與核 —— 背後是一整片可互動的物理力場。以真實模擬與歷屆試題，把每一次做錯，變成真正搞懂的一刻。</p>
+      <div class="stats" id="stats"></div>
+      <div class="cta" id="cta"></div>
+      <p class="waitcount" id="waitCount"></p>
+    </div>
   </div>
 
-  <!-- Navigation dots (filled by JS) -->
-  <div class="dots" id="dots"></div>
+  <div class="rail">
+    <div class="hint" id="hint">移動滑鼠 · 點擊互動</div>
+    <div class="pills liquid-glass glass-pill" id="pills"></div>
+    <div class="scrollcue">向下捲動<i></i></div>
+  </div>
+</section>
 
-  <!-- Hero panel -->
-  <section class="panel" data-kind="hero" data-accent="velocity" data-align="left" data-idx="0">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="center">
-      <span class="badge">HKDSE 物理 · 互動學習平台</span>
-      <h1>看得見的物理，<br /><span class="grad">才學得會</span></h1>
-      <p class="lede">
-        拋體、天體、氣體、光 &mdash;&mdash; 背後是一整片可互動的物理力場。以真實模擬與歷屆試題，把每一次做錯，變成真正搞懂的一刻。
-      </p>
-      <div class="btnrow">
-        <a class="btn primary" href="https://github.com/IoTSolutionSmartCity/IoTSolutionSmartCity.github.io" target="_blank" rel="noopener">了解更多 →</a>
-      </div>
+<!-- ══════════ Platform ══════════ -->
+<section class="band" id="platform">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="eyebrow">平台功能</p>
+      <h2>不是再多一套筆記，<br /><em>而是一個會回答你的物理場。</em></h2>
+      <p class="lede">每一次做錯，都被拆回背後的概念、對應的模擬、以及同一考點的歷屆試題 —— 直到你真的搞懂為止。</p>
     </div>
-    <div class="hint">移動滑鼠 · 點擊注入能量</div>
-    <div class="scrollhint">向下捲動探索<span class="mark"></span></div>
-  </section>
 
-  <!-- Exp 01: Projectile -->
-  <section class="panel" data-kind="exp" data-accent="velocity" data-align="left" data-idx="1">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="copy">
-      <p class="kicker"><span class="num"><span>01</span></span> 力學 · 拋體運動</p>
-      <h2>每一條軌跡，<br />都是一條<span class="hl">方程式</span>。</h2>
-      <p>調角度、調初速，親眼看着 v、a、g 如何塑造運動。把「做錯的一題」拆回它背後的物理。</p>
-      <div class="readout">
-        <div><b style="color:var(--velocity)">52°</b><span>launch angle</span></div>
-        <div><b style="color:var(--force)">9.8</b><span>m·s⁻²</span></div>
-        <div><b>1.9</b><span>seconds</span></div>
-      </div>
-      <p class="ihint">移動滑鼠瞄準 · 點擊發射</p>
+    <div class="bento" id="bento"></div>
+  </div>
+</section>
+
+<!-- ══════════ Numbers ══════════ -->
+<section class="band" id="numbers" style="padding-top:2rem">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="eyebrow">內容規模</p>
+      <h2>從 <em>2012</em> 到 <em>2026</em>，<br />整個 DSE 物理都在裡面。</h2>
     </div>
-  </section>
+    <div class="nums" id="nums"></div>
+  </div>
+</section>
 
-  <!-- Exp 02: Astronomy -->
-  <section class="panel" data-kind="exp" data-accent="star" data-align="right" data-idx="2">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="copy">
-      <p class="kicker"><span class="num"><span>02</span></span> 天體物理 · 萬有引力</p>
-      <h2>同一條定律，<br />從<span class="hl">蘋果到行星</span>。</h2>
-      <p>行星為何不墜落？把地面上的重力，延伸到整個星系。軌道、週期、向心力 &mdash;&mdash; 一次看懂。</p>
-      <div class="readout">
-        <div><b style="color:var(--star)">3</b><span>orbits</span></div>
-        <div><b>T ∝ r³ᐟ²</b><span>kepler III</span></div>
-      </div>
-      <p class="ihint">移動滑鼠牽引 · 點擊加入行星</p>
+<!-- ══════════ Stack ══════════ -->
+<section class="band" id="stack" style="padding-top:2rem">
+  <div class="wrap reveal">
+    <p class="eyebrow">技術架構</p>
+    <h2>真實物理，<em>跑在瀏覽器裡。</em></h2>
+    <p class="lede">delta-time 積分、陰影、向量合成 —— 頁面上這片背景就是同一套引擎的縮小版。</p>
+    <div class="stack">
+      <span class="chip">Next.js 16 App Router</span><span class="chip">React 19</span>
+      <span class="chip">TypeScript</span><span class="chip">Tailwind CSS 4</span>
+      <span class="chip">Three.js · R3F</span><span class="chip">Zustand</span>
+      <span class="chip">MDX 筆記</span><span class="chip">DeepSeek 匯入</span>
+      <span class="chip">NextAuth · Drizzle</span><span class="chip">Vitest</span>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Exp 03: Gas -->
-  <section class="panel" data-kind="exp" data-accent="force" data-align="left" data-idx="3">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="copy">
-      <p class="kicker"><span class="num"><span>03</span></span> 熱學 · 氣體分子</p>
-      <h2>溫度，<br />其實是<span class="hl">運動</span>。</h2>
-      <p>把抽象的動能變成看得見的碰撞。加熱、加壓，觀察分子如何愈撞愈快 &mdash;&mdash; 理想氣體不再只是公式。</p>
-      <div class="readout">
-        <div><b style="color:var(--force)">340</b><span>kelvin</span></div>
-        <div><b>1.2×10⁵</b><span>pascal</span></div>
-      </div>
-      <p class="ihint">移動滑鼠加熱 · 點擊升溫</p>
+<!-- ══════════ Waitlist odometer (revealed after a signup) ══════════ -->
+<section class="band" id="waitlist">
+  <div class="wrap">
+    <p class="eyebrow" style="justify-content:center">已收到你的登記</p>
+    <div class="odo-stage" id="odoStage">
+      <div class="odo" id="odo" role="img" aria-label="等待名單人數"></div>
     </div>
-  </section>
+    <p class="odo-label" id="odoLabel">人 · 正在等待 PhysicsEasy 發佈</p>
+  </div>
+</section>
 
-  <!-- Exp 04: Light -->
-  <section class="panel" data-kind="exp" data-accent="elective" data-align="right" data-idx="4">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="copy">
-      <p class="kicker"><span class="num"><span>04</span></span> 波動 · 光與色散</p>
-      <h2>一束白光，<br />藏著整道<span class="hl">彩虹</span>。</h2>
-      <p>折射、色散、全內反射 &mdash;&mdash; 光的路徑由角度決定。配合歷屆光學題，把概念一次貫通。</p>
-      <div class="readout">
-        <div><b style="color:var(--elective)">1.52</b><span>refractive index</span></div>
-        <div><b>7</b><span>spectrum</span></div>
-      </div>
-      <p class="ihint">移動滑鼠改變入射角</p>
+<!-- ══════════ Watermark CTA ══════════ -->
+<section class="mark-sec" id="start">
+  <div class="reveal">
+    <div class="mark">
+      <span class="l1">由今天起，</span>
+      <span class="l2">從錯誤中學物理</span>
     </div>
-  </section>
-
-  <!-- CTA panel -->
-  <section class="panel" data-kind="cta" data-accent="velocity" data-align="left" data-idx="5">
-    <canvas class="landing-canvas" aria-hidden></canvas>
-    <div class="veil"></div>
-    <div class="center">
-      <p class="kicker" style="justify-content:center">
-        <span class="num"><span>▸</span></span> 準備好了嗎
-      </p>
-      <h2>由今天起，<span class="grad">從錯誤中學物理</span>。</h2>
-      <p class="lede">
-        登入即開始追蹤你的錯題、掌握度與歷屆試題進度 &mdash;&mdash; 跨裝置同步。
-      </p>
-      <div class="btnrow">
-        <a class="btn primary" href="https://github.com/IoTSolutionSmartCity/IoTSolutionSmartCity.github.io.git" target="_blank" rel="noopener">了解更多 →</a>
-      </div>
+    <div class="mark-cta">
+      <a class="b-solid" href="https://github.com/IoTSolutionSmartCity/IoTSolutionSmartCity.github.io" target="_blank" rel="noopener">了解更多</a>
+      <a class="b-line" href="hero-demo.html">看單頁 Demo →</a>
     </div>
-  </section>
+  </div>
+</section>
 
-</div><!-- .doc -->
+<!-- ══════════ Marquee ══════════ -->
+<div class="marquee"><div class="marquee-track" id="mq"></div></div>
+
+<footer>
+  <div class="foot">
+    <span>© 2026 PhysicsEasy · HKDSE 物理</span>
+    <span class="live"><i></i>主平台開發中</span>
+    <a href="https://github.com/IoTSolutionSmartCity/IoTSolutionSmartCity.github.io" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</footer>
 
 <script>
-// ─────────────────────────────────────────────────────────────
-// Landing scenes (ported from landingScenes.ts — pure canvas JS)
-// ─────────────────────────────────────────────────────────────
-const TAU = Math.PI * 2;
+const TAU = Math.PI*2;
 
-const field = (S) => {
-  const COLORS = ["34,211,238","34,211,238","34,211,238","251,146,60","167,139,250"];
-  let ps = [];
-  const make = (x, y, energetic) => {
-    const sp = (energetic ? 3.4 : 0.5) * S.DPR;
-    return { x: x ?? Math.random()*S.W, y: y ?? Math.random()*S.H,
-             vx: (Math.random()-0.5)*sp, vy: (Math.random()-0.5)*sp,
-             r: Math.random()*2+1.6, c: COLORS[(Math.random()*COLORS.length)|0] };
-  };
-  S.setInit(() => {
-    const n = Math.min(96, Math.round((S.W*S.H)/(26000*S.DPR*S.DPR))+40);
-    ps = Array.from({length:n}, () => make());
-  });
-  S.onDown = (x,y) => { for(let i=0;i<8;i++) if(ps.length<180) ps.push(make(x,y,true)); };
-  return () => {
-    const c=S.ctx, link=130*S.DPR, push=130*S.DPR;
-    c.clearRect(0,0,S.W,S.H);
-    for(let i=0;i<ps.length;i++){
-      for(let j=i+1;j<ps.length;j++){
-        const a=ps[i],b=ps[j], dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
-        if(d2<link*link){
-          const al=(1-Math.sqrt(d2)/link)*0.5;
-          c.strokeStyle="rgba(34,211,238,"+al.toFixed(3)+")";
-          c.lineWidth=1; c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.stroke();
-        }
-      }
-    }
-    for(const p of ps){
-      if(S.pointer.active){
-        const dx=p.x-S.pointer.x,dy=p.y-S.pointer.y,d=Math.hypot(dx,dy);
-        if(d<push&&d>0.1){ const f=(1-d/push)*0.95*S.DPR; p.vx+=(dx/d)*f; p.vy+=(dy/d)*f; }
-      }
-      p.x+=p.vx; p.y+=p.vy; p.vx*=0.985; p.vy*=0.985;
-      if(Math.hypot(p.vx,p.vy)<0.25*S.DPR){ p.vx+=(Math.random()-0.5)*0.12*S.DPR; p.vy+=(Math.random()-0.5)*0.12*S.DPR; }
-      if(p.x<0){p.x=0;p.vx*=-1;} if(p.x>S.W){p.x=S.W;p.vx*=-1;}
-      if(p.y<0){p.y=0;p.vy*=-1;} if(p.y>S.H){p.y=S.H;p.vy*=-1;}
-      c.beginPath(); c.arc(p.x,p.y,p.r*S.DPR,0,TAU);
-      c.fillStyle="rgba("+p.c+",0.95)"; c.shadowColor="rgba("+p.c+",0.9)"; c.shadowBlur=8*S.DPR;
-      c.fill(); c.shadowBlur=0;
-    }
-    if(S.pointer.active){
-      const g=c.createRadialGradient(S.pointer.x,S.pointer.y,0,S.pointer.x,S.pointer.y,push);
-      g.addColorStop(0,"rgba(34,211,238,0.10)"); g.addColorStop(1,"rgba(34,211,238,0)");
-      c.fillStyle=g; c.beginPath(); c.arc(S.pointer.x,S.pointer.y,push,0,TAU); c.fill();
-    }
-  };
-};
+/* ═══════════ Scenes ═══════════ */
 
 const projectile = (S) => {
   let shots=[];
-  const launcher=()=>({x:S.W*0.1,y:S.H*0.82});
-  const fireToward=(px,py)=>{
-    const l=launcher(), k=0.16;
-    let vx=(px-l.x)*k, vy=(py-l.y)*k;
+  const launcher=()=>({x:S.W*0.12,y:S.H*0.84});
+  const fire=(px,py)=>{
+    const l=launcher(),k=0.16; let vx=(px-l.x)*k, vy=(py-l.y)*k;
     const max=S.H*0.03, m=Math.hypot(vx,vy);
-    if(m>max){vx=(vx/m)*max; vy=(vy/m)*max;}
+    if(m>max){vx=vx/m*max; vy=vy/m*max;}
     if(vy>0) vy=-Math.abs(vy)*0.6;
     shots.push({x:l.x,y:l.y,vx,vy,g:S.H*0.00034,tr:[]});
   };
-  const fireAuto=()=>{
-    const a=(50+Math.random()*14)*Math.PI/180, sp=S.H*0.02, l=launcher();
-    shots.push({x:l.x,y:l.y,vx:Math.cos(a)*sp,vy:-Math.sin(a)*sp,g:S.H*0.00034,tr:[]});
-  };
   S.setInit(()=>{shots=[];});
-  S.onDown=(x,y)=>fireToward(x,y);
-  const grid=()=>{
-    const s=44*S.DPR;
-    S.ctx.strokeStyle="rgba(38,48,79,.35)"; S.ctx.lineWidth=1; S.ctx.beginPath();
-    for(let x=0;x<S.W;x+=s){S.ctx.moveTo(x,0);S.ctx.lineTo(x,S.H);}
-    for(let y=0;y<S.H;y+=s){S.ctx.moveTo(0,y);S.ctx.lineTo(S.W,y);}
-    S.ctx.stroke();
+  S.onDown=(x,y)=>fire(x,y);
+  S.tick=()=>{
+    if(Math.random()<0.014&&shots.length<7){
+      const a=(48+Math.random()*18)*Math.PI/180, sp=S.H*0.021, l=launcher();
+      shots.push({x:l.x,y:l.y,vx:Math.cos(a)*sp,vy:-Math.sin(a)*sp,g:S.H*0.00034,tr:[]});
+    }
   };
   return ()=>{
-    const c=S.ctx, l=launcher();
-    c.clearRect(0,0,S.W,S.H); grid();
-    c.strokeStyle="rgba(38,48,79,.9)"; c.lineWidth=S.DPR; c.beginPath();
-    c.moveTo(0,S.H*0.82); c.lineTo(S.W,S.H*0.82); c.stroke();
+    const c=S.ctx,l=launcher(); c.clearRect(0,0,S.W,S.H);
+    const s=52*S.DPR;
+    c.strokeStyle="rgba(255,255,255,.045)"; c.lineWidth=1; c.beginPath();
+    for(let x=0;x<S.W;x+=s){c.moveTo(x,0);c.lineTo(x,S.H);}
+    for(let y=0;y<S.H;y+=s){c.moveTo(0,y);c.lineTo(S.W,y);}
+    c.stroke();
+    c.strokeStyle="rgba(255,255,255,.16)"; c.lineWidth=S.DPR;
+    c.beginPath(); c.moveTo(0,S.H*0.84); c.lineTo(S.W,S.H*0.84); c.stroke();
     if(S.pointer.active){
-      c.strokeStyle="rgba(251,146,60,.5)"; c.setLineDash([4*S.DPR,6*S.DPR]); c.lineWidth=1.5*S.DPR;
+      c.strokeStyle="rgba(251,146,60,.45)"; c.setLineDash([4*S.DPR,7*S.DPR]); c.lineWidth=1.4*S.DPR;
       c.beginPath(); c.moveTo(l.x,l.y); c.lineTo(S.pointer.x,S.pointer.y); c.stroke(); c.setLineDash([]);
     }
-    c.beginPath(); c.arc(l.x,l.y,5*S.DPR,0,TAU); c.fillStyle="#fb923c"; c.fill();
-    if(Math.random()<0.014&&shots.length<3) fireAuto();
     for(let i=shots.length-1;i>=0;i--){
-      const s=shots[i];
-      s.x+=s.vx; s.y+=s.vy; s.vy+=s.g; s.tr.push([s.x,s.y]);
-      if(s.tr.length>80) s.tr.shift();
-      for(let t=1;t<s.tr.length;t++){
-        const al=t/s.tr.length;
-        c.strokeStyle="rgba(34,211,238,"+(al*0.6).toFixed(3)+")";
-        c.lineWidth=al*3*S.DPR; c.beginPath();
-        c.moveTo(s.tr[t-1][0],s.tr[t-1][1]); c.lineTo(s.tr[t][0],s.tr[t][1]); c.stroke();
+      const p=shots[i];
+      p.vy+=p.g; p.x+=p.vx; p.y+=p.vy;
+      p.tr.push([p.x,p.y]); if(p.tr.length>90) p.tr.shift();
+      for(let k=1;k<p.tr.length;k++){
+        const al=(k/p.tr.length)*0.65;
+        c.strokeStyle="rgba(34,211,238,"+al.toFixed(3)+")"; c.lineWidth=al*2.4*S.DPR;
+        c.beginPath(); c.moveTo(p.tr[k-1][0],p.tr[k-1][1]); c.lineTo(p.tr[k][0],p.tr[k][1]); c.stroke();
       }
-      c.beginPath(); c.arc(s.x,s.y,4.5*S.DPR,0,TAU);
-      c.fillStyle="#a5f3fc"; c.shadowColor="rgba(34,211,238,.9)"; c.shadowBlur=16*S.DPR;
-      c.fill(); c.shadowBlur=0;
-      if((s.y>S.H*0.82&&s.vy>0)||s.x>S.W||s.x<0) shots.splice(i,1);
+      c.beginPath(); c.arc(p.x,p.y,4*S.DPR,0,TAU);
+      c.fillStyle="#67e8f9"; c.shadowColor="rgba(34,211,238,.9)"; c.shadowBlur=14*S.DPR; c.fill(); c.shadowBlur=0;
+      if(p.y>S.H*0.84||p.x>S.W+40) shots.splice(i,1);
+    }
+    c.fillStyle="rgba(255,255,255,.75)";
+    c.fillRect(l.x-7*S.DPR,l.y-4*S.DPR,14*S.DPR,4*S.DPR);
+  };
+};
+
+const light = (S) => {
+  const SPEC=["255,64,64","255,150,40","255,224,60","70,220,120","60,180,255","120,110,255","190,90,255"];
+  let apex,bl,br,hit,t=0;
+  S.setInit(()=>{
+    t=0; const s=Math.min(S.W,S.H)*0.2, cX=S.W*0.5;
+    apex={x:cX,y:S.H*0.5-s}; bl={x:cX-s*0.7,y:S.H*0.5+s*0.7}; br={x:cX+s*0.7,y:S.H*0.5+s*0.7};
+    hit={x:(bl.x+apex.x)/2,y:(bl.y+apex.y)/2};
+  });
+  return ()=>{
+    const c=S.ctx; t+=0.02; c.clearRect(0,0,S.W,S.H);
+    const srcY=S.pointer.active
+      ? Math.max(S.H*0.1,Math.min(S.H*0.9,S.pointer.y))
+      : hit.y+Math.sin(t)*S.H*0.07;
+    const inc=Math.atan2(hit.y-srcY,hit.x);
+    c.globalCompositeOperation="lighter";
+    c.strokeStyle="rgba(255,255,255,.8)"; c.lineWidth=2.2*S.DPR;
+    c.shadowColor="rgba(255,255,255,.6)"; c.shadowBlur=10*S.DPR;
+    c.beginPath(); c.moveTo(0,srcY); c.lineTo(hit.x,hit.y); c.stroke(); c.shadowBlur=0;
+    const base=0.12+inc*0.35, spread=0.5;
+    for(let i=0;i<SPEC.length;i++){
+      const f=i/(SPEC.length-1), a=base+f*spread, len=S.W*0.4;
+      c.strokeStyle="rgba("+SPEC[i]+",.75)"; c.lineWidth=2*S.DPR;
+      c.shadowColor="rgba("+SPEC[i]+",.6)"; c.shadowBlur=8*S.DPR;
+      c.beginPath(); c.moveTo(hit.x,hit.y);
+      c.lineTo(hit.x+Math.cos(a)*len, hit.y+Math.sin(a)*len); c.stroke();
+    }
+    c.shadowBlur=0; c.globalCompositeOperation="source-over";
+    c.beginPath(); c.moveTo(apex.x,apex.y); c.lineTo(bl.x,bl.y); c.lineTo(br.x,br.y); c.closePath();
+    const pg=c.createLinearGradient(bl.x,apex.y,br.x,br.y);
+    pg.addColorStop(0,"rgba(167,139,250,.14)"); pg.addColorStop(1,"rgba(34,211,238,.14)");
+    c.fillStyle=pg; c.fill();
+    c.strokeStyle="rgba(200,220,255,.5)"; c.lineWidth=1.5*S.DPR; c.stroke();
+  };
+};
+
+const gas = (S) => {
+  let mol=[];
+  const pad=()=>Math.min(S.W,S.H)*0.16;
+  S.setInit(()=>{
+    const p=pad(), sp=S.H*0.0035;
+    mol=Array.from({length:40},()=>({
+      x:p+Math.random()*(S.W-2*p), y:p+Math.random()*(S.H-2*p),
+      vx:(Math.random()-.5)*sp*2, vy:(Math.random()-.5)*sp*2, r:Math.random()*3+3}));
+  });
+  S.onDown=()=>{ for(const m of mol){m.vx*=1.3;m.vy*=1.3;} };
+  return ()=>{
+    const c=S.ctx,p=pad(); c.clearRect(0,0,S.W,S.H);
+    c.strokeStyle="rgba(251,146,60,.3)"; c.lineWidth=1.4*S.DPR;
+    c.strokeRect(p,p,S.W-2*p,S.H-2*p);
+    if(S.pointer.active){
+      const g=c.createRadialGradient(S.pointer.x,S.pointer.y,0,S.pointer.x,S.pointer.y,95*S.DPR);
+      g.addColorStop(0,"rgba(251,146,60,.16)"); g.addColorStop(1,"rgba(251,146,60,0)");
+      c.fillStyle=g; c.beginPath(); c.arc(S.pointer.x,S.pointer.y,95*S.DPR,0,TAU); c.fill();
+    }
+    const vmax=S.H*0.011;
+    for(const m of mol){
+      if(S.pointer.active){
+        const dx=m.x-S.pointer.x,dy=m.y-S.pointer.y,d=Math.hypot(dx,dy);
+        if(d<95*S.DPR&&d>.1){const f=(1-d/(95*S.DPR))*.55*S.DPR; m.vx+=dx/d*f; m.vy+=dy/d*f;}
+      }
+      const sp=Math.hypot(m.vx,m.vy);
+      if(sp>vmax){m.vx=m.vx/sp*vmax; m.vy=m.vy/sp*vmax;}
+      m.x+=m.vx; m.y+=m.vy;
+      if(m.x<p+m.r||m.x>S.W-p-m.r){m.vx*=-1; m.x=Math.max(p+m.r,Math.min(S.W-p-m.r,m.x));}
+      if(m.y<p+m.r||m.y>S.H-p-m.r){m.vy*=-1; m.y=Math.max(p+m.r,Math.min(S.H-p-m.r,m.y));}
+      const hot=Math.min(1,Math.hypot(m.vx,m.vy)/(S.H*0.0065));
+      c.beginPath(); c.arc(m.x,m.y,m.r*S.DPR,0,TAU);
+      c.fillStyle="rgba(251,"+Math.round(146+hot*50)+","+Math.round(70+(1-hot)*120)+",.95)";
+      c.shadowColor="rgba(251,146,60,.75)"; c.shadowBlur=10*S.DPR; c.fill(); c.shadowBlur=0;
     }
   };
 };
@@ -490,231 +667,528 @@ const astronomy = (S) => {
   const soft=()=>(Math.min(S.W,S.H)*0.04)**2;
   const spawn=(r,col,rad,ang)=>{
     const v=Math.sqrt(GM/rad);
-    const x=cx+Math.cos(ang)*rad, y=cy+Math.sin(ang)*rad;
-    return {x,y,vx:-Math.sin(ang)*v,vy:Math.cos(ang)*v,r,c:col,tr:[]};
+    return {x:cx+Math.cos(ang)*rad, y:cy+Math.sin(ang)*rad,
+            vx:-Math.sin(ang)*v, vy:Math.cos(ang)*v, r, c:col, tr:[]};
   };
   S.setInit(()=>{
-    cx=S.W*0.3; cy=S.H*0.5; t=0;
-    const min=Math.min(S.W,S.H), refR=min*0.3, refT=430;
-    GM=(4*Math.PI*Math.PI*refR**3)/(refT*refT);
-    stars=Array.from({length:90},()=>({x:Math.random()*S.W,y:Math.random()*S.H,ph:Math.random()*TAU,r:Math.random()*1.3+0.3}));
-    bodies=[
-      spawn(4.5*S.DPR,"34,211,238",min*0.18,0),
-      spawn(6*S.DPR,"167,139,250",min*0.26,2),
-      spawn(3.5*S.DPR,"234,240,255",min*0.34,4),
-    ];
+    cx=S.W*0.5; cy=S.H*0.5; t=0;
+    const min=Math.min(S.W,S.H);
+    GM=(4*Math.PI*Math.PI*(min*0.3)**3)/(430*430);
+    stars=Array.from({length:110},()=>({x:Math.random()*S.W,y:Math.random()*S.H,ph:Math.random()*TAU,r:Math.random()*1.3+.3}));
+    bodies=[spawn(4.5*S.DPR,"34,211,238",min*0.2,0),
+            spawn(6*S.DPR,"167,139,250",min*0.3,2),
+            spawn(3.5*S.DPR,"234,240,255",min*0.4,4)];
   });
   S.onDown=(x,y)=>{
     if(bodies.length>=7) bodies.shift();
-    const dx=x-cx,dy=y-cy,rad=Math.hypot(dx,dy)||1, ang=Math.atan2(dy,dx);
+    const dx=x-cx,dy=y-cy;
     const cols=["34,211,238","167,139,250","251,146,60","234,240,255"];
-    bodies.push(spawn(4*S.DPR,cols[(Math.random()*cols.length)|0],rad,ang));
+    bodies.push(spawn(4*S.DPR,cols[(Math.random()*cols.length)|0],Math.hypot(dx,dy)||1,Math.atan2(dy,dx)));
   };
   return ()=>{
-    const c=S.ctx; t+=1;
-    c.fillStyle="rgba(11,16,32,0.30)"; c.fillRect(0,0,S.W,S.H);
+    const c=S.ctx; t++;
+    c.fillStyle="rgba(0,0,0,.32)"; c.fillRect(0,0,S.W,S.H);
     for(const s of stars){
-      const tw=0.5+0.5*Math.sin(t*0.03+s.ph);
+      const tw=.5+.5*Math.sin(t*.03+s.ph);
       c.beginPath(); c.arc(s.x,s.y,s.r*S.DPR,0,TAU);
-      c.fillStyle="rgba(234,240,255,"+(0.15+tw*0.4).toFixed(2)+")"; c.fill();
+      c.fillStyle="rgba(234,240,255,"+(.12+tw*.38).toFixed(2)+")"; c.fill();
     }
     const rad=Math.min(S.W,S.H)*0.16;
-    const glow=c.createRadialGradient(cx,cy,0,cx,cy,rad);
-    glow.addColorStop(0,"rgba(255,210,122,0.9)"); glow.addColorStop(0.4,"rgba(251,146,60,0.32)"); glow.addColorStop(1,"rgba(251,146,60,0)");
-    c.fillStyle=glow; c.beginPath(); c.arc(cx,cy,rad,0,TAU); c.fill();
-    c.beginPath(); c.arc(cx,cy,10*S.DPR,0,TAU);
-    c.fillStyle="#ffe6ad"; c.shadowColor="rgba(255,210,122,0.9)"; c.shadowBlur=30*S.DPR; c.fill(); c.shadowBlur=0;
+    const g=c.createRadialGradient(cx,cy,0,cx,cy,rad);
+    g.addColorStop(0,"rgba(255,210,122,.85)"); g.addColorStop(.4,"rgba(251,146,60,.28)"); g.addColorStop(1,"rgba(251,146,60,0)");
+    c.fillStyle=g; c.beginPath(); c.arc(cx,cy,rad,0,TAU); c.fill();
+    c.beginPath(); c.arc(cx,cy,9*S.DPR,0,TAU);
+    c.fillStyle="#ffe6ad"; c.shadowColor="rgba(255,210,122,.9)"; c.shadowBlur=28*S.DPR; c.fill(); c.shadowBlur=0;
     const eps=soft();
     for(let i=bodies.length-1;i>=0;i--){
       const b=bodies[i];
-      let dx=cx-b.x,dy=cy-b.y, r2=dx*dx+dy*dy+eps, inv=GM/(r2*Math.sqrt(r2));
+      let dx=cx-b.x,dy=cy-b.y,r2=dx*dx+dy*dy+eps,inv=GM/(r2*Math.sqrt(r2));
       b.vx+=dx*inv; b.vy+=dy*inv;
       if(S.pointer.active){
-        dx=S.pointer.x-b.x; dy=S.pointer.y-b.y; r2=dx*dx+dy*dy+eps; inv=(GM*0.5)/(r2*Math.sqrt(r2));
+        dx=S.pointer.x-b.x; dy=S.pointer.y-b.y; r2=dx*dx+dy*dy+eps; inv=GM*.5/(r2*Math.sqrt(r2));
         b.vx+=dx*inv; b.vy+=dy*inv;
       }
-      b.x+=b.vx; b.y+=b.vy; b.tr.push([b.x,b.y]);
-      if(b.tr.length>46) b.tr.shift();
+      b.x+=b.vx; b.y+=b.vy; b.tr.push([b.x,b.y]); if(b.tr.length>52) b.tr.shift();
       for(let k=1;k<b.tr.length;k++){
-        const al=(k/b.tr.length)*0.5;
+        const al=k/b.tr.length*.5;
         c.strokeStyle="rgba("+b.c+","+al.toFixed(3)+")"; c.lineWidth=al*2.6*S.DPR;
         c.beginPath(); c.moveTo(b.tr[k-1][0],b.tr[k-1][1]); c.lineTo(b.tr[k][0],b.tr[k][1]); c.stroke();
       }
       c.beginPath(); c.arc(b.x,b.y,b.r,0,TAU);
-      c.fillStyle="rgb("+b.c+")"; c.shadowColor="rgba("+b.c+",0.9)"; c.shadowBlur=12*S.DPR;
-      c.fill(); c.shadowBlur=0;
-      const dist=Math.hypot(b.x-cx,b.y-cy);
-      if(i>=3&&(dist>Math.max(S.W,S.H)||dist<12*S.DPR)) bodies.splice(i,1);
+      c.fillStyle="rgb("+b.c+")"; c.shadowColor="rgba("+b.c+",.9)"; c.shadowBlur=12*S.DPR; c.fill(); c.shadowBlur=0;
+      const d=Math.hypot(b.x-cx,b.y-cy);
+      if(i>=3&&(d>Math.max(S.W,S.H)||d<11*S.DPR)) bodies.splice(i,1);
     }
   };
 };
 
-const gas = (S) => {
-  let mol=[];
-  const pad=()=>Math.min(S.W,S.H)*0.14;
+/* 電和磁：電偶極的電場線 */
+const emag = (S) => {
+  let q=[], t=0;
   S.setInit(()=>{
-    const n=38, sp=S.H*0.0035, p=pad();
-    mol=Array.from({length:n},()=>({
-      x:p+Math.random()*(S.W-2*p), y:p+Math.random()*(S.H-2*p),
-      vx:(Math.random()-0.5)*sp*2, vy:(Math.random()-0.5)*sp*2,
-      r:Math.random()*3+3,
-    }));
+    t=0; const d=Math.min(S.W,S.H)*0.2;
+    q=[{x:S.W*0.5-d,y:S.H*0.5,s:1},{x:S.W*0.5+d,y:S.H*0.5,s:-1}];
   });
-  S.onDown=()=>{ for(const m of mol){m.vx*=1.35;m.vy*=1.35;} };
-  return ()=>{
-    const c=S.ctx, p=pad();
-    c.clearRect(0,0,S.W,S.H);
-    c.strokeStyle="rgba(251,146,60,0.35)"; c.lineWidth=1.5*S.DPR; c.strokeRect(p,p,S.W-2*p,S.H-2*p);
-    if(S.pointer.active){
-      const g=c.createRadialGradient(S.pointer.x,S.pointer.y,0,S.pointer.x,S.pointer.y,90*S.DPR);
-      g.addColorStop(0,"rgba(251,146,60,0.14)"); g.addColorStop(1,"rgba(251,146,60,0)");
-      c.fillStyle=g; c.beginPath(); c.arc(S.pointer.x,S.pointer.y,90*S.DPR,0,TAU); c.fill();
+  S.onDown=()=>{ for(const p of q) p.s*=-1; };
+  const E=(x,y)=>{
+    let ex=0,ey=0;
+    for(const p of q){
+      const dx=x-p.x, dy=y-p.y, r2=dx*dx+dy*dy+(9*S.DPR)**2, r=Math.sqrt(r2);
+      const k=p.s/(r2*r); ex+=dx*k; ey+=dy*k;
     }
-    const vmax=S.H*0.01;
-    for(const m of mol){
-      if(S.pointer.active){
-        const dx=m.x-S.pointer.x,dy=m.y-S.pointer.y,d=Math.hypot(dx,dy);
-        if(d<90*S.DPR&&d>0.1){const f=(1-d/(90*S.DPR))*0.6*S.DPR; m.vx+=(dx/d)*f; m.vy+=(dy/d)*f;}
+    return [ex,ey];
+  };
+  return ()=>{
+    const c=S.ctx; t+=0.012; c.clearRect(0,0,S.W,S.H);
+    const test = S.pointer.active ? {x:S.pointer.x,y:S.pointer.y,s:1} : null;
+    if(test) q.push(test);
+    const step=3*S.DPR, N=18;
+    for(const p of q){
+      if(p.s<0) continue;
+      for(let i=0;i<N;i++){
+        const a=i/N*TAU + t;
+        let x=p.x+Math.cos(a)*11*S.DPR, y=p.y+Math.sin(a)*11*S.DPR;
+        c.beginPath(); c.moveTo(x,y);
+        for(let k=0;k<220;k++){
+          const [ex,ey]=E(x,y), m=Math.hypot(ex,ey);
+          if(!m) break;
+          x+=ex/m*step; y+=ey/m*step;
+          if(x<0||y<0||x>S.W||y>S.H) break;
+          c.lineTo(x,y);
+          let done=false;
+          for(const o of q) if(o.s<0 && Math.hypot(x-o.x,y-o.y)<12*S.DPR) done=true;
+          if(done) break;
+        }
+        c.strokeStyle=p===test?"rgba(255,224,90,.45)":"rgba(34,211,238,.32)";
+        c.lineWidth=1.2*S.DPR; c.stroke();
       }
-      const sp=Math.hypot(m.vx,m.vy);
-      if(sp>vmax){m.vx=(m.vx/sp)*vmax; m.vy=(m.vy/sp)*vmax;}
-      m.x+=m.vx; m.y+=m.vy;
-      if(m.x<p+m.r||m.x>S.W-p-m.r){m.vx*=-1; m.x=Math.max(p+m.r,Math.min(S.W-p-m.r,m.x));}
-      if(m.y<p+m.r||m.y>S.H-p-m.r){m.vy*=-1; m.y=Math.max(p+m.r,Math.min(S.H-p-m.r,m.y));}
-      const hot=Math.min(1,Math.hypot(m.vx,m.vy)/(S.H*0.0065));
-      c.beginPath(); c.arc(m.x,m.y,m.r*S.DPR,0,TAU);
-      c.fillStyle="rgba(251,"+Math.round(146+hot*50)+","+Math.round(70+(1-hot)*120)+",0.95)";
-      c.shadowColor="rgba(251,146,60,0.8)"; c.shadowBlur=10*S.DPR; c.fill(); c.shadowBlur=0;
     }
+    for(const p of q){
+      const col=p.s>0?"251,146,60":"96,165,250";
+      c.beginPath(); c.arc(p.x,p.y,10*S.DPR,0,TAU);
+      c.fillStyle="rgba("+col+",.95)"; c.shadowColor="rgba("+col+",.9)"; c.shadowBlur=22*S.DPR; c.fill(); c.shadowBlur=0;
+      c.strokeStyle="rgba(0,0,0,.55)"; c.lineWidth=2*S.DPR; c.beginPath();
+      c.moveTo(p.x-4.5*S.DPR,p.y); c.lineTo(p.x+4.5*S.DPR,p.y);
+      if(p.s>0){ c.moveTo(p.x,p.y-4.5*S.DPR); c.lineTo(p.x,p.y+4.5*S.DPR); }
+      c.stroke();
+    }
+    if(test) q.pop();
   };
 };
 
-const light = (S) => {
-  const SPEC=["255,64,64","255,150,40","255,224,60","70,220,120","60,180,255","120,110,255","190,90,255"];
-  let apex={x:0,y:0},bl={x:0,y:0},br={x:0,y:0},hit={x:0,y:0},t=0;
+/* 放射現象：不穩定核衰變 */
+const nuclear = (S) => {
+  let nucleons=[], rays=[], cx=0, cy=0, t=0;
+  const R=()=>Math.min(S.W,S.H)*0.06;
+  const emit=()=>{
+    const kind=["a","b","g"][(Math.random()*3)|0];
+    const a=Math.random()*TAU, sp=(kind==="g"?9:kind==="b"?6:3.2)*S.DPR;
+    rays.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,k:kind,tr:[]});
+    if(rays.length>26) rays.shift();
+  };
   S.setInit(()=>{
-    t=0;
-    const s=Math.min(S.W,S.H)*0.2, cX=S.W*0.26;
-    apex={x:cX,y:S.H*0.5-s}; bl={x:cX-s*0.7,y:S.H*0.5+s*0.7}; br={x:cX+s*0.7,y:S.H*0.5+s*0.7};
-    hit={x:(bl.x+apex.x)/2,y:(bl.y+apex.y)/2};
+    cx=S.W*0.5; cy=S.H*0.5; t=0; rays=[];
+    nucleons=Array.from({length:30},(_,i)=>({ph:Math.random()*TAU,rr:Math.random(),p:i%2===0}));
   });
+  S.onDown=()=>emit();
+  S.tick=()=>{ if(Math.random()<0.03) emit(); };
   return ()=>{
-    const c=S.ctx; t+=0.02; c.clearRect(0,0,S.W,S.H);
-    const srcY=S.pointer.active
-      ? Math.max(S.H*0.1,Math.min(S.H*0.9,S.pointer.y))
-      : hit.y+Math.sin(t)*S.H*0.06;
-    const incidence=Math.atan2(hit.y-srcY,hit.x-0);
-    c.globalCompositeOperation="lighter";
-    c.strokeStyle="rgba(234,240,255,0.85)"; c.lineWidth=2.5*S.DPR;
-    c.shadowColor="rgba(234,240,255,0.7)"; c.shadowBlur=10*S.DPR;
-    c.beginPath(); c.moveTo(0,srcY); c.lineTo(hit.x,hit.y); c.stroke(); c.shadowBlur=0;
-    const base=0.12+incidence*0.35, spread=0.5;
-    for(let i=0;i<SPEC.length;i++){
-      const f=i/(SPEC.length-1), ang=base+f*spread, len=S.W*0.26;
-      const ex=hit.x+Math.cos(ang)*len, ey=hit.y+Math.sin(ang)*len;
-      c.strokeStyle="rgba("+SPEC[i]+",0.8)"; c.lineWidth=2.2*S.DPR;
-      c.shadowColor="rgba("+SPEC[i]+",0.6)"; c.shadowBlur=8*S.DPR;
-      c.beginPath(); c.moveTo(hit.x,hit.y); c.lineTo(ex,ey); c.stroke();
+    const c=S.ctx; t+=0.03; c.clearRect(0,0,S.W,S.H);
+    const r=R();
+    const g=c.createRadialGradient(cx,cy,0,cx,cy,r*3.4);
+    g.addColorStop(0,"rgba(167,139,250,.24)"); g.addColorStop(1,"rgba(167,139,250,0)");
+    c.fillStyle=g; c.beginPath(); c.arc(cx,cy,r*3.4,0,TAU); c.fill();
+    const COL={a:"251,146,60",b:"34,211,238",g:"167,139,250"};
+    for(let i=rays.length-1;i>=0;i--){
+      const p=rays[i];
+      p.x+=p.vx; p.y+=p.vy; p.tr.push([p.x,p.y]); if(p.tr.length>34) p.tr.shift();
+      const col=COL[p.k];
+      for(let k=1;k<p.tr.length;k++){
+        const al=k/p.tr.length*(p.k==="g"?.55:.75);
+        c.strokeStyle="rgba("+col+","+al.toFixed(3)+")"; c.lineWidth=al*(p.k==="a"?3.2:2)*S.DPR;
+        c.beginPath(); c.moveTo(p.tr[k-1][0],p.tr[k-1][1]); c.lineTo(p.tr[k][0],p.tr[k][1]); c.stroke();
+      }
+      c.beginPath(); c.arc(p.x,p.y,(p.k==="a"?3.4:2.2)*S.DPR,0,TAU);
+      c.fillStyle="rgb("+col+")"; c.shadowColor="rgba("+col+",.9)"; c.shadowBlur=12*S.DPR; c.fill(); c.shadowBlur=0;
+      if(p.x<-30||p.y<-30||p.x>S.W+30||p.y>S.H+30) rays.splice(i,1);
     }
-    c.shadowBlur=0; c.globalCompositeOperation="source-over";
-    c.beginPath(); c.moveTo(apex.x,apex.y); c.lineTo(bl.x,bl.y); c.lineTo(br.x,br.y); c.closePath();
-    const pg=c.createLinearGradient(bl.x,apex.y,br.x,br.y);
-    pg.addColorStop(0,"rgba(167,139,250,0.12)"); pg.addColorStop(1,"rgba(34,211,238,0.12)");
-    c.fillStyle=pg; c.fill();
-    c.strokeStyle="rgba(200,220,255,0.55)"; c.lineWidth=1.6*S.DPR; c.stroke();
+    for(const n of nucleons){
+      const a=n.ph+t*(.35+n.rr*.5), rr=r*(.25+n.rr*.75);
+      const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr*.92;
+      const col=n.p?"251,146,60":"200,214,255";
+      c.beginPath(); c.arc(x,y,3.4*S.DPR,0,TAU);
+      c.fillStyle="rgba("+col+",.95)"; c.shadowColor="rgba("+col+",.7)"; c.shadowBlur=8*S.DPR; c.fill(); c.shadowBlur=0;
+    }
+    c.strokeStyle="rgba(167,139,250,.3)"; c.lineWidth=1.2*S.DPR;
+    c.beginPath(); c.arc(cx,cy,r*1.35,0,TAU); c.stroke();
   };
 };
 
-const SCENES = { field, projectile, astronomy, gas, light };
+const SCENES={projectile,light,gas,emag,nuclear,astronomy};
 
-function createScene(name, canvas) {
-  const ctx = canvas.getContext("2d");
-  const parent = canvas.parentElement;
-  let W=0,H=0,DPR=1,init=null;
-  const pointer = {x:-9999,y:-9999,active:false};
-  const S = {
-    ctx, get W(){return W;}, get H(){return H;}, get DPR(){return DPR;},
-    pointer, setInit(f){init=f;},
-  };
-  const draw = SCENES[name](S);
-  function resize(){
-    DPR=Math.min(window.devicePixelRatio||1,2);
-    W=canvas.width=parent.clientWidth*DPR;
-    H=canvas.height=parent.clientHeight*DPR;
-    canvas.style.width=parent.clientWidth+"px";
-    canvas.style.height=parent.clientHeight+"px";
-    if(init) init();
-  }
+/* ═══════════ Topics (HKDSE 課題 → 概念 → 實驗) ═══════════ */
+const TOPICS=[
+  {id:"force-motion", pill:"力和運動", scene:"projectile",
+   tag:"必修課題 01 · 力和運動 · 拋體運動",
+   head:"每一條軌跡<br>都是一條方程式",
+   sub:"水平等速、垂直等加速 —— 拋體只是兩個一維運動疊在一起。調角度、調初速，親眼看着 v、a、g 如何塑造整條路徑。",
+   hint:"移動滑鼠瞄準 · 點擊發射",
+   stats:[["52°","launch angle"],["9.81 m·s⁻²","g"],["v₍ᵧ₎ = 0","at apex"]]},
+
+  {id:"wave-motion", pill:"波動", scene:"light",
+   tag:"必修課題 02 · 波動 · 光的折射與色散",
+   head:"一束白光<br>藏著整道彩虹",
+   sub:"n = sin i / sin r。不同頻率的光折射率不同，於是白光被拆成光譜；角度再大一點，就是全內反射。",
+   hint:"移動滑鼠改變入射角",
+   stats:[["1.52","refractive index"],["42°","critical angle"],["7","spectrum"]]},
+
+  {id:"heat-gases", pill:"熱和氣體", scene:"gas",
+   tag:"必修課題 03 · 熱和氣體 · 分子運動論",
+   head:"溫度<br>其實是運動",
+   sub:"pV = nRT 背後，是無數次分子碰撞。加熱就是把能量塞進動能裡 —— 撞得愈快，壓強就愈大。",
+   hint:"移動滑鼠加熱 · 點擊升溫",
+   stats:[["340 K","temperature"],["1.2×10⁵ Pa","pressure"],["½m⟨c²⟩","mean KE"]]},
+
+  {id:"electricity-magnetism", pill:"電和磁", scene:"emag",
+   tag:"必修課題 04 · 電和磁 · 電場",
+   head:"看不見的場<br>畫得出來",
+   sub:"電場線由正電荷出發、於負電荷終止，密度就是場強。把滑鼠當作一顆試驗電荷，看它如何改寫整個場的形狀。",
+   hint:"移動滑鼠 = 試驗電荷 · 點擊反轉極性",
+   stats:[["E = kQ/r²","field strength"],["+ → −","field lines"],["N·C⁻¹","unit"]]},
+
+  {id:"radioactivity-nuclear", pill:"放射與核能", scene:"nuclear",
+   tag:"必修課題 05 · 放射現象和核能 · 衰變",
+   head:"衰變<br>沒有時間表",
+   sub:"單一個原子核何時衰變無法預測，但一大群核卻嚴格服從半衰期。α、β、γ 三種輻射，穿透力與電離力剛好相反。",
+   hint:"點擊觸發一次衰變",
+   stats:[["α β γ","emissions"],["N = N₀e^(−λt)","decay law"],["T½","half-life"]]},
+
+  {id:"astronomy-space", pill:"天文與航天", scene:"astronomy",
+   tag:"選修課題 · 天文學和航天科學 · 軌道運動",
+   head:"同一條定律<br>從蘋果到行星",
+   sub:"行星為何不墜落？把地面上的重力延伸到整個星系 —— 向心力就是萬有引力，於是 T² ∝ r³。",
+   hint:"移動滑鼠牽引 · 點擊加入行星",
+   stats:[["T² ∝ r³","Kepler III"],["6.67×10⁻¹¹","G"],["GMm/r²","gravitation"]]},
+];
+
+/* ═══════════ Canvas driver ═══════════ */
+const canvas=document.getElementById("cv");
+const bg=document.getElementById("bg");
+const ctx=canvas.getContext("2d");
+const pointer={x:-9999,y:-9999,active:false};
+let W=0,H=0,DPR=1,init=null,draw=null,S=null,visible=true;
+
+function mountScene(name){
+  init=null;
+  S={ctx,get W(){return W},get H(){return H},get DPR(){return DPR},pointer,setInit(f){init=f}};
+  draw=SCENES[name](S);
   resize();
-  return {
-    resize, frame:draw,
-    setPointer(x,y,active){pointer.x=x*DPR;pointer.y=y*DPR;pointer.active=active;},
-    pointerDown(x,y){pointer.x=x*DPR;pointer.y=y*DPR;pointer.active=true;S.onDown?.(pointer.x,pointer.y);},
-  };
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=canvas.width=Math.max(1,bg.clientWidth*DPR);
+  H=canvas.height=Math.max(1,bg.clientHeight*DPR);
+  canvas.style.width=bg.clientWidth+"px";
+  canvas.style.height=bg.clientHeight+"px";
+  if(init) init();
+}
+addEventListener("resize",resize);
+
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function loop(){ if(visible){ S?.tick?.(); draw?.(); } requestAnimationFrame(loop); }
+// ponytail: pause the sim once the hero scrolls away — the only perf knob this page needs
+new IntersectionObserver(([e])=>{visible=e.isIntersecting;}).observe(bg);
+
+addEventListener("pointermove",e=>{
+  const r=bg.getBoundingClientRect();
+  pointer.x=(e.clientX-r.left)*DPR; pointer.y=(e.clientY-r.top)*DPR; pointer.active=true;
+});
+addEventListener("pointerleave",()=>{pointer.active=false});
+addEventListener("pointerdown",e=>{
+  if(e.target.closest("nav,.rail,.cta,.band,.mark-sec,footer")) return;
+  const r=bg.getBoundingClientRect();
+  pointer.x=(e.clientX-r.left)*DPR; pointer.y=(e.clientY-r.top)*DPR; pointer.active=true;
+  S?.onDown?.(pointer.x,pointer.y);
+});
+
+/* ═══════════ Topic switching ═══════════ */
+const tagEl=document.getElementById("tagline"), headEl=document.getElementById("head"),
+      subEl=document.getElementById("sub"), hintEl=document.getElementById("hint"),
+      statsEl=document.getElementById("stats"), pillsEl=document.getElementById("pills");
+let current=-1;
+
+function swap(el,html){
+  el.classList.remove("swap"); void el.offsetWidth;
+  el.innerHTML=html; el.classList.add("swap");
+}
+function selectTopic(i){
+  if(i===current) return;
+  current=i; const T=TOPICS[i];
+  canvas.classList.remove("on");
+  setTimeout(()=>{ mountScene(T.scene); canvas.classList.add("on"); },260);
+  swap(headEl,T.head.split("<br>").map(l=>`<span class="hl">${l}</span>`).join(""));
+  swap(tagEl,T.tag); swap(subEl,T.sub); swap(hintEl,T.hint);
+  swap(statsEl,T.stats.map(([v,l])=>
+    `<div class="stat"><div class="row"><i class="rule"></i><b>${v}</b></div><span>${l}</span></div>`).join(""));
+  [...pillsEl.children].forEach((b,k)=>b.classList.toggle("on",k===i));
+}
+TOPICS.forEach((T,i)=>{
+  const b=document.createElement("button");
+  b.className="pill"; b.textContent=T.pill;
+  b.onclick=()=>selectTopic(i);
+  pillsEl.appendChild(b);
+});
+
+/* ═══════════ Waitlist ═══════════
+   Setup (once):
+   1. Create a Google Form with a single short-answer question for the email.
+   2. Preview it → right-click the input → Inspect → copy its name="entry.XXXXXXXXX" → `field`.
+   3. Form's URL is .../viewform → swap `viewform` for `formResponse`          → `form`.
+   4. Responses tab → link to a Sheet → File ▸ Share ▸ Publish to web ▸ CSV    → `csv`.
+   Until all three are set the form still validates and thanks the user, but
+   nothing is stored and no count is shown (never a fabricated one). */
+const WAITLIST={
+  form:"https://docs.google.com/forms/d/e/1FAIpQLScjKAY9UfWkGM7GMtmU5kqKnmKQ9ZZ83KMs6zyhpphCOqyUbw/formResponse",
+  field:"entry.163803820",
+  // A count-only tab published to the web: one cell holding =COUNTA(...).
+  // Never point this at the response sheet — that CSV is public and holds every address.
+  csv:"https://docs.google.com/spreadsheets/d/e/2PACX-1vSgYSS4RINE3J13W7ZcSJg8e6aEu6VOZ0kuFqV13pSTu5PGQ6kxBRSmXAd8f1GqCPRJtf-kjPbr1gVH/pub?gid=1291030922&single=true&output=csv",
+};
+
+async function submitEmail(email){
+  if(!WAITLIST.form||!WAITLIST.field) return false;
+  // The form has "Collect email addresses" on, so Google's own `emailAddress` field
+  // is required alongside the question — omit either and it 400s.
+  // The question is 你最想先看到哪個課題？, and it is required too, so it gets the topic
+  // the visitor had open when they signed up (not a claim about what they want most).
+  // no-cors: Google never replies with CORS headers, so we can't read the result —
+  // a resolved fetch is the only success signal available from a static page.
+  await fetch(WAITLIST.form,{method:"POST",mode:"no-cors",
+    body:new URLSearchParams({
+      emailAddress:email,
+      [WAITLIST.field]:TOPICS[current]?.pill ?? "",
+      fvv:"1", pageHistory:"0", submissionTimestamp:"-1",
+    })});
+  return true;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Boot: wire panels to scenes and start animation loops
-// ─────────────────────────────────────────────────────────────
-const PANEL_SCENES = ["field","projectile","astronomy","gas","light","field"];
+/* 3D odometer — one drum per digit, each spins two full turns then lands. */
+function renderOdometer(n){
+  const digits=String(n).padStart(3,"0").split("");
+  const odo=document.getElementById("odo");
+  odo.innerHTML=digits.map((_,i)=>
+    `<span class="digit"><span class="col" style="--dd:${i*0.13}s">${
+      "0123456789".repeat(3).split("").map(d=>`<b>${d}</b>`).join("")
+    }</span></span>`).join("");
+  // land on the third pass so every drum visibly spins, whatever the digit
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    odo.querySelectorAll(".col").forEach((col,i)=>{
+      col.style.transform=`translateY(-${20+Number(digits[i])}em)`;
+    });
+  }));
+}
 
-(function boot(){
-  const doc   = document.getElementById("doc");
-  const panels = Array.from(document.querySelectorAll(".panel"));
-  const dotsEl = document.getElementById("dots");
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  // build nav dots
-  const dotBtns = panels.map((panel, i) => {
-    const btn = document.createElement("button");
-    btn.className = "dot-btn" + (i===0?" current":"");
-    btn.setAttribute("aria-label", "前往第 "+(i+1)+" 節");
-    btn.addEventListener("click", () => panel.scrollIntoView({behavior:"smooth"}));
-    dotsEl.appendChild(btn);
-    return btn;
+/* pointer parallax — the drums tilt toward the cursor */
+(function(){
+  const stage=document.getElementById("odoStage"), odo=document.getElementById("odo");
+  stage.addEventListener("pointermove",e=>{
+    const r=stage.getBoundingClientRect();
+    odo.style.setProperty("--ry",(((e.clientX-r.left)/r.width)-0.5)*26+"deg");
+    odo.style.setProperty("--rx",(0.5-((e.clientY-r.top)/r.height))*20+"deg");
   });
-
-  // create scene controllers
-  const controllers = panels.map((panel, i) => {
-    const canvas = panel.querySelector("canvas");
-    const ctrl = createScene(PANEL_SCENES[i], canvas);
-    // pointer wiring
-    const toLocal = (e) => { const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
-    panel.addEventListener("pointermove", (e)=>{ const p=toLocal(e); ctrl.setPointer(p.x,p.y,true); });
-    panel.addEventListener("pointerleave", ()=>ctrl.setPointer(-9999,-9999,false));
-    panel.addEventListener("pointerdown", (e)=>{ const p=toLocal(e); ctrl.pointerDown(p.x,p.y); });
-    // resize observer
-    const ro = new ResizeObserver(()=>ctrl.resize());
-    ro.observe(panel);
-    return ctrl;
+  stage.addEventListener("pointerleave",()=>{
+    odo.style.setProperty("--ry","-10deg"); odo.style.setProperty("--rx","8deg");
   });
-
-  // intersection observer → active panel + reveal
-  let activeIndex = 0;
-  const io = new IntersectionObserver((entries) => {
-    for(const e of entries){
-      if(e.isIntersecting && e.intersectionRatio > 0.55){
-        const idx = Number(e.target.dataset.idx);
-        activeIndex = idx;
-        dotBtns.forEach((b,i)=>b.classList.toggle("current",i===idx));
-        e.target.classList.add("revealed");
-      }
-    }
-  }, {root:doc, threshold:[0,0.55,0.9]});
-  panels.forEach(p=>io.observe(p));
-
-  // animation loop: only run active panel
-  if(reduce){
-    controllers.forEach(c=>{c.resize();c.frame();});
-  } else {
-    let raf=0;
-    const loop = () => {
-      controllers[activeIndex]?.frame();
-      raf=requestAnimationFrame(loop);
-    };
-    raf=requestAnimationFrame(loop);
-  }
 })();
+
+async function readCount(){
+  if(!WAITLIST.csv) return;
+  try{
+    // Google's CDN serves a stale copy and ignores cache:"no-store" — only a fresh
+    // query string actually busts it, so the number isn't minutes behind.
+    const url=WAITLIST.csv+"&cb="+Date.now();
+    const cell=(await (await fetch(url,{cache:"no-store"})).text())
+      .split("\n")[0].replace(/[",\s]/g,"");     // the sheet is a single =COUNTA cell
+    const n=parseInt(cell,10);
+    if(!Number.isFinite(n)||n<1) return;         // 0 or junk: show nothing, never a guess
+    const el=document.getElementById("waitCount");
+    el.textContent=`已有 ${n.toLocaleString("en")} 人在等待發佈`;
+    el.classList.add("on");
+    return n;
+  }catch{ /* sheet not published yet — stay silent rather than show a fake number */ }
+}
+// Not called on load: the number is the reward for signing up, so it stays hidden
+// until a submission succeeds.
+
+/* Google writes the Form response to the Sheet asynchronously, so an immediate read
+   still returns the old total. Poll a few times and take the first value that moved. */
+async function revealCount(){
+  const sec=document.getElementById("waitlist");
+  for(const wait of [900,1800,3000,5000]){
+    await new Promise(r=>setTimeout(r,wait));
+    const n=await readCount();
+    if(n){
+      // unhide FIRST: a display:none element runs no transitions, so rendering the
+      // drums before this would apply the final transform instantly and lose the spin.
+      sec.classList.add("on");
+      sec.scrollIntoView({behavior:"smooth",block:"center"});
+      renderOdometer(n);
+      return n;
+    }
+  }
+  // Count unreadable (offline, sheet unpublished, or opened over file:// where the
+  // CSV's 307 has no CORS headers). Still confirm the signup — just never invent a number.
+  document.getElementById("odoStage").style.display="none";
+  document.getElementById("odoLabel").textContent="我們會以電郵通知你發佈消息";
+  sec.classList.add("on");
+  sec.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+/* ═══════════ CTA: button ⇄ email form ═══════════ */
+const cta=document.getElementById("cta");
+const ARROW=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+const CHECK=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+let typer=null, resetT=null;
+
+function typewrite(input,text){
+  clearInterval(typer); input.placeholder=""; let i=0;
+  typer=setInterval(()=>{
+    input.placeholder=text.slice(0,++i);
+    if(i>=text.length) clearInterval(typer);
+  },60);
+}
+function showButton(){
+  clearInterval(typer); clearTimeout(resetT);
+  cta.innerHTML=`<button class="cta-btn pop" id="ctaBtn">立即開始學習</button>`;
+  document.getElementById("ctaBtn").onclick=showForm;
+}
+function showForm(){
+  cta.innerHTML=`<form class="cta-form pop" id="ctaForm" autocomplete="off">
+      <input type="email" required id="ctaInput" />
+      <button class="cta-send" type="submit" id="ctaSend">${ARROW}</button>
+    </form>`;
+  const input=document.getElementById("ctaInput");
+  input.focus();
+  typewrite(input,"輸入電郵 · 搶先體驗 PhysicsEasy");
+  document.getElementById("ctaForm").onsubmit=async e=>{
+    e.preventDefault();
+    const email=input.value.trim();
+    if(!email) return;
+    const send=document.getElementById("ctaSend");
+    send.disabled=true;
+    let ok=true;
+    try{ await submitEmail(email); }catch{ ok=false; }
+    send.innerHTML=CHECK; send.classList.add("pop");
+    input.value=""; input.blur();
+    typewrite(input, ok?"已收到 · 我們會以電郵通知你":"送出失敗 · 請稍後再試");
+    if(ok) revealCount();
+    resetT=setTimeout(showButton,4500);
+  };
+}
+showButton();
+
+/* ═══════════ Content sections ═══════════ */
+/* line-art motifs — drawn, not imported, so the page stays one file */
+const G=(inner)=>`<svg class="art" viewBox="0 0 100 100" fill="none" stroke="currentColor"
+  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const ART={
+  tree:G(`<circle cx="50" cy="16" r="6"/><path d="M50 22v12M22 46V34h56v12"/>
+    <circle cx="22" cy="52" r="6"/><circle cx="50" cy="52" r="6"/><circle cx="78" cy="52" r="6"/>
+    <path d="M22 58v10M50 58v10M78 58v10"/>
+    <rect x="10" y="68" width="24" height="14" rx="3"/><rect x="38" y="68" width="24" height="14" rx="3"/>
+    <rect x="66" y="68" width="24" height="14" rx="3"/>`),
+  reader:G(`<rect x="8" y="14" width="48" height="72" rx="5"/>
+    <path d="M18 30h28M18 40h28M18 50h16"/>
+    <rect x="16" y="58" width="22" height="10" rx="3" stroke-dasharray="3 3"/>
+    <rect x="62" y="26" width="30" height="48" rx="5"/><path d="M70 40h14M70 50h14M70 60h8"/>
+    <path d="M38 63h20" stroke-dasharray="2 4"/>`),
+  chart:G(`<path d="M14 84V26M14 84h74"/>
+    <rect x="24" y="62" width="12" height="22" rx="2"/><rect x="42" y="48" width="12" height="36" rx="2"/>
+    <rect x="60" y="36" width="12" height="48" rx="2"/><rect x="78" y="54" width="8" height="30" rx="2"/>
+    <path d="M24 58L48 44l24-12" stroke-dasharray="4 4"/>`),
+  note:G(`<rect x="16" y="10" width="62" height="80" rx="6"/>
+    <path d="M28 28h38M28 40h38M28 64h38M28 76h22"/>
+    <rect x="28" y="48" width="24" height="10" rx="3" stroke-dasharray="3 3"/>
+    <path d="M58 53h10"/><path d="M16 22h62" stroke-dasharray="2 3"/>`),
+  cube:G(`<path d="M50 8l38 22v40L50 92 12 70V30z"/><path d="M12 30l38 22 38-22M50 52v40"/>
+    <path d="M50 8v44" stroke-dasharray="3 4"/><circle cx="50" cy="52" r="3.5" fill="currentColor" stroke="none"/>`),
+  loop:G(`<path d="M26 38a26 26 0 0 1 48-6"/><path d="M74 62a26 26 0 0 1-48 6"/>
+    <path d="M74 20v14H60M26 80V66h14"/>
+    <circle cx="26" cy="50" r="8"/><circle cx="74" cy="50" r="8"/>`),
+  papers:G(`<rect x="14" y="26" width="46" height="60" rx="5"/>
+    <path d="M24 26V16h46v60h-10M34 16V6h46v60H70"/>
+    <path d="M24 44h26M24 56h26M24 68h16"/>`),
+  import:G(`<rect x="10" y="20" width="34" height="46" rx="4"/><path d="M18 32h18M18 42h18M18 52h10"/>
+    <path d="M50 44h22M64 36l8 8-8 8"/>
+    <rect x="78" y="24" width="14" height="10" rx="2"/><rect x="78" y="40" width="14" height="10" rx="2"/>
+    <rect x="78" y="56" width="14" height="10" rx="2"/>`),
+  sync:G(`<path d="M30 62a16 16 0 0 1 2-32 22 22 0 0 1 42 6 14 14 0 0 1-2 27H30z"/>
+    <rect x="26" y="70" width="20" height="16" rx="3"/><rect x="56" y="70" width="20" height="16" rx="3"/>
+    <path d="M46 78h10" stroke-dasharray="2 3"/>`),
+};
+const CYAN="34,211,238", ORANGE="251,146,60", VIOLET="167,139,250";
+const FEATURES=[
+  ["課題導覽","必修 / 選修 → 子課題，對應官方 9 大課題的兩層架構。",true,ART.tree,CYAN],
+  ["互動題目檢視器","題幹內概念可點擊，側欄即時彈出對應筆記。",false,ART.reader,CYAN],
+  ["概念層級錯題追蹤","記錄作答、迷思概念、筆記開啟次數，推導掌握度並提示弱項。",false,ART.chart,ORANGE],
+  ["豐富互動筆記","Markdown + 表格 + 可放大圖片 + 填充題 + 章節目錄。",false,ART.note,CYAN],
+  ["高保真 3D 模擬","React Three Fiber 場景，delta-time 物理與真實陰影。",true,ART.cube,VIOLET],
+  ["Playground ↔ 題目閉環","模擬中觸發全內反射 → 側欄推薦相關題目；題目頁反向推薦實驗。",false,ART.loop,VIOLET],
+  ["歷屆試題下載中心","2012–2026 卷一 / 卷二 / 評卷參考，支援搜尋與篩選。",false,ART.papers,ORANGE],
+  ["AI 內容匯入","DeepSeek 解析 PDF 試卷，自動抽出題目、選項、答案與圖片。",false,ART.import,ORANGE],
+  ["Google 登入 · 進度同步","以 Google 帳戶登入，錯題與掌握度存進資料庫，換裝置照樣接上。",false,ART.sync,CYAN],
+];
+document.getElementById("bento").innerHTML=FEATURES.map(([h,p,wide,art,tint],i)=>
+  `<div class="cell liquid-glass reveal${wide?" wide":""}" style="--d:${(i%3)*0.09}s;--tint:${tint}">
+     <span class="glow"></span>${art}
+     <span class="idx">${String(i+1).padStart(2,"0")}</span>
+     <h3>${h}</h3><p>${p}</p>
+   </div>`).join("");
+
+const NUMS=[["9","必修 + 選修課題"],["15","年歷屆試題"],["6","可互動模擬場景"],["100%","繁體中文優先"]];
+document.getElementById("nums").innerHTML=NUMS.map(([b,s],i)=>
+  `<div class="num liquid-glass reveal" style="--d:${i*0.08}s"><b>${b}</b><span>${s}</span></div>`).join("");
+
+document.getElementById("mq").innerHTML=
+  `<span>從錯誤中學物理 &nbsp;·&nbsp; </span>`.repeat(20);
+
+/* reveal on scroll */
+const io=new IntersectionObserver((es)=>{
+  for(const e of es) if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+},{threshold:.15});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+/* nav shadow */
+const navEl=document.getElementById("nav");
+addEventListener("scroll",()=>navEl.classList.toggle("stuck",scrollY>60),{passive:true});
+
+/* ═══════════ Loader ═══════════ */
+(function(){
+  const el=document.getElementById("loader"), cnt=document.getElementById("ldCount"),
+        bar=document.getElementById("ldBar"), word=document.getElementById("ldWord");
+  const WORDS=["觀察","模擬","理解"];
+  if(reduce){ el.classList.add("done"); return; }
+  let w=0;
+  const wt=setInterval(()=>{
+    w=(w+1)%WORDS.length;
+    word.textContent=WORDS[w];
+    word.classList.remove("ld-word"); void word.offsetWidth; word.classList.add("ld-word");
+  },900);
+  const t0=performance.now(), DUR=2200;
+  (function step(now){
+    const p=Math.min(1,(now-t0)/DUR);
+    cnt.textContent=String(Math.round(p*100)).padStart(3,"0");
+    bar.style.transform=`scaleX(${p})`;
+    if(p<1) requestAnimationFrame(step);
+    else { clearInterval(wt); setTimeout(()=>el.classList.add("done"),350); }
+  })(t0);
+})();
+
+/* ═══════════ Boot ═══════════ */
+selectTopic(0);
+mountScene(TOPICS[0].scene);
+canvas.classList.add("on");
+if(!reduce) loop(); else draw?.();
 </script>
 </body>
 </html>
