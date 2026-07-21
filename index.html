@@ -61,7 +61,7 @@ body{
 
 /* ══════════ Entry screen (A) ══════════ */
 #entry{
-  position:fixed; inset:0; z-index:9999; overflow:hidden;
+  position:fixed; inset:0; z-index:9999; overflow:hidden; cursor:pointer;
   background:#05060a; color:#fff;
   clip-path:inset(0 0 0 0);
   transition:clip-path .95s cubic-bezier(.76,0,.24,1), opacity .55s ease .4s, visibility .95s;
@@ -85,53 +85,6 @@ body{
   padding:1.25rem clamp(1.25rem,4vw,2rem);
 }
 .entry-logo{display:flex; align-items:center; gap:.5rem; font-weight:500; font-size:1rem}
-.entry-links{
-  display:none; align-items:center; gap:.25rem;
-  position:absolute; left:50%; transform:translateX(-50%);
-  border-radius:.75rem; padding:.5rem;
-}
-.entry-links button{
-  padding:.375rem .75rem; border-radius:.375rem; cursor:pointer;
-  font-size:.875rem; color:rgba(255,255,255,.7); transition:color .25s, background .25s;
-}
-.entry-links button:hover{color:#fff}
-.entry-links button.on{background:rgba(255,255,255,.15); color:#fff}
-.entry-actions{display:none; align-items:center; gap:.75rem}
-.entry-login{
-  border-radius:9999px; padding:.625rem 1rem; font-size:.875rem; font-weight:500;
-  color:#fff; cursor:pointer; transition:background .25s;
-}
-.entry-login:hover{background:rgba(255,255,255,.05)}
-.entry-begin{
-  border-radius:9999px; padding:.625rem 1rem; font-size:.875rem; font-weight:500;
-  background:#fff; color:#000; cursor:pointer; transition:background .25s;
-}
-.entry-begin:hover{background:rgba(255,255,255,.9)}
-.entry-toggle{
-  border-radius:.5rem; padding:.5rem; cursor:pointer; color:#fff;
-  display:grid; place-items:center;
-}
-.entry-toggle svg{width:18px; height:18px; display:block}
-@media(min-width:768px){
-  .entry-links,.entry-actions{display:flex}
-  .entry-toggle{display:none}
-}
-
-/* ── mobile card menu ── */
-.entry-menu{
-  position:absolute; top:72px; left:1rem; right:1rem; z-index:30;
-  border-radius:1rem; padding:1rem; display:none; flex-direction:column; gap:.25rem;
-}
-.entry-menu.on{display:flex}
-.entry-menu button{
-  width:100%; text-align:left; padding:.75rem 1rem; border-radius:.5rem;
-  font-size:.875rem; color:rgba(255,255,255,.75); cursor:pointer; transition:background .25s;
-}
-.entry-menu button:hover{background:rgba(255,255,255,.06)}
-.entry-menu .row{display:flex; gap:.5rem; margin-top:.5rem; padding-top:.75rem; border-top:1px solid rgba(255,255,255,.1)}
-.entry-menu .row button{flex:1; text-align:center}
-.entry-menu .row .solid{background:#fff; color:#000; border-radius:9999px}
-@media(min-width:768px){.entry-menu{display:none !important}}
 
 /* ── bottom-left lockup ── */
 .entry-body{
@@ -148,20 +101,17 @@ body{
   font-weight:300; color:rgba(255,255,255,.6);
   animation:fadeSlideUp .8s .4s ease both;
 }
-.entry-buttons{
-  display:flex; flex-wrap:wrap; align-items:center; gap:.75rem;
-  animation:fadeSlideUp .8s .6s ease both;
+/* not a button — a hint pill with the 3s countdown draining across its base */
+.entry-hint{
+  display:inline-flex; flex-direction:column; gap:.55rem; border-radius:9999px;
+  padding:.7rem 1.5rem .8rem; animation:fadeSlideUp .8s .6s ease both;
 }
-.entry-primary{
-  border-radius:9999px; padding:.75rem 1.75rem; font-size:.95rem; font-weight:500;
-  background:#fff; color:#000; cursor:pointer; transition:background .25s;
+.entry-hint span{font-size:.8rem; font-weight:300; color:rgba(255,255,255,.75); letter-spacing:.06em}
+.entry-hint i{
+  display:block; height:2px; border-radius:2px; background:rgba(255,255,255,.85);
+  transform-origin:left; transform:scaleX(1);
 }
-.entry-primary:hover{background:rgba(255,255,255,.9)}
-.entry-secondary{
-  border-radius:9999px; padding:.75rem 1.75rem; font-size:.95rem; font-weight:500;
-  color:#fff; cursor:pointer; transition:background .25s;
-}
-.entry-secondary:hover{background:rgba(255,255,255,.05)}
+#entry.armed .entry-hint i{transform:scaleX(0); transition:transform 3s linear}
 @media(prefers-reduced-motion:reduce){#entry canvas{animation:none} #entry *{animation-duration:.01s}}
 
 /* ══════════ Nav ══════════ */
@@ -556,34 +506,12 @@ footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem
       </svg>
       <span>PhysicsEasy</span>
     </div>
-
-    <div class="entry-links liquid-glass" id="entryScenes"></div>
-
-    <div class="entry-actions">
-      <button class="entry-login liquid-glass" type="button" data-enter>登入</button>
-      <button class="entry-begin" type="button" data-enter>繼續學習</button>
-    </div>
-
-    <button class="entry-toggle liquid-glass" id="entryToggle" aria-label="選單" aria-expanded="false">
-      <svg class="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-      <svg class="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button>
-  </div>
-
-  <div class="entry-menu liquid-glass" id="entryMenu">
-    <div class="row">
-      <button type="button" data-enter>登入</button>
-      <button class="solid" type="button" data-enter>繼續學習</button>
-    </div>
   </div>
 
   <div class="entry-body">
     <h1 class="entry-h1">看得見的物理，<br />才學得會。</h1>
     <p class="entry-sub">以真實模擬與歷屆試題，把每一次做錯，變成真正搞懂的一刻。</p>
-    <div class="entry-buttons">
-      <button class="entry-primary" type="button" data-enter>繼續學習</button>
-      <button class="entry-secondary liquid-glass" type="button" id="entryNext">換一個實驗</button>
-    </div>
+    <div class="entry-hint liquid-glass"><span>點擊任意處繼續</span><i id="entryTimer"></i></div>
   </div>
 </div>
 
@@ -1449,62 +1377,28 @@ addEventListener("scroll",()=>{
 
 /* ═══════════ Entry screen (A) ═══════════ */
 (function(){
-  const el=document.getElementById("entry"), menu=document.getElementById("entryMenu"),
-        tog=document.getElementById("entryToggle");
+  const el=document.getElementById("entry");
 
-  // the nav pill switches which experiment is playing, so the gate itself is the artwork
-  const SHOW=[["波動","interference"],["拋體","projectile"],["軌道","astronomy"],
-              ["電場","emag"],["衰變","nuclear"]];
+  // the simulation is the whole show — hue-rotated interference field
   const eDriver=createDriver(document.getElementById("ecv"), el, {});
   let alive=true;
-  const pill=document.getElementById("entryScenes");
-  pill.innerHTML=SHOW.map(([label],i)=>
-    '<button type="button"'+(i===0?' class="on"':'')+'>'+label+'</button>').join("");
-  let shown=-1;
-  function show(i){
-    if(i===shown) return;
-    shown=i; eDriver.mount(SHOW[i][1]);
-    [...pill.children].forEach((b,k)=>b.classList.toggle("on",k===i));
-  }
   ambientTint="0,229,255";
-  show(0);
-  pill.addEventListener("click",e=>{
-    const b=e.target.closest("button");
-    if(b) show([...pill.children].indexOf(b));
-  });
-  document.getElementById("entryNext").addEventListener("click",()=>show((shown+1)%SHOW.length));
+  eDriver.mount("interference");
   (function spin(){ if(!alive) return; eDriver.frame(); requestAnimationFrame(spin); })();
 
   let entered=false;
   function enter(){
     if(entered) return;
     entered=true;
-    menu.classList.remove("on");
+    clearTimeout(autoT);
     el.classList.add("done");
     setTimeout(()=>{ alive=false; el.remove(); }, 1100);   // stop the second sim once hidden
   }
-  // 登入 / 繼續學習, wherever they appear, all open the front page
-  el.addEventListener("click",e=>{
-    if(e.target.closest("[data-enter]")){ e.preventDefault(); enter(); }
-  });
-
-  function setMenu(open){
-    menu.classList.toggle("on",open);
-    tog.setAttribute("aria-expanded",String(open));
-    tog.querySelector(".ic-menu").style.display=open?"none":"block";
-    tog.querySelector(".ic-x").style.display=open?"block":"none";
-  }
-  tog.addEventListener("click",()=>setMenu(!menu.classList.contains("on")));
-
-  const onKey=e=>{
-    if(e.key==="Escape"&&menu.classList.contains("on")){
-      setMenu(false);                                // close the menu, stay on the gate
-      return;
-    }
-    if(e.key!=="Enter"&&e.key!=="Escape") return;    // not {once:true}: any other key
-    removeEventListener("keydown",onKey);            // would otherwise consume the listener
-    enter();
-  };
+  // no buttons: any click/tap/keypress goes to B, and after 3s it goes by itself
+  el.addEventListener("click",enter);
+  el.classList.add("armed");                               // starts the hint bar draining
+  const autoT=setTimeout(enter,3000);
+  const onKey=()=>{ removeEventListener("keydown",onKey); enter(); };
   addEventListener("keydown",onKey);
 })();
 
