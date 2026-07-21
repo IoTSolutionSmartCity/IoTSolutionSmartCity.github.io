@@ -980,12 +980,14 @@ function renderOdometer(n){
     `<span class="digit"><span class="col" style="--dd:${i*0.13}s">${
       "0123456789".repeat(3).split("").map(d=>`<b>${d}</b>`).join("")
     }</span></span>`).join("");
-  // land on the third pass so every drum visibly spins, whatever the digit
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    odo.querySelectorAll(".col").forEach((col,i)=>{
-      col.style.transform=`translateY(-${20+Number(digits[i])}em)`;
-    });
-  }));
+  // Flush layout so the resting state is committed, then set the final transform in the
+  // same task. requestAnimationFrame would be cleaner but never fires in a background
+  // tab — the drums would stay parked on "0" and the page would show a wrong number.
+  void odo.offsetHeight;
+  odo.querySelectorAll(".col").forEach((col,i)=>{
+    // land on the third pass so every drum visibly spins, whatever the digit
+    col.style.transform=`translateY(-${20+Number(digits[i])}em)`;
+  });
 }
 
 /* pointer parallax — the drums tilt toward the cursor */
