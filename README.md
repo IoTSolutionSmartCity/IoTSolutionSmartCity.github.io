@@ -36,8 +36,6 @@
 | AI · 導師 | Vercel AI SDK + 本地 Ollama `deepseek-r1:14b` |
 | 測試 | Vitest · jsdom · `validate:content` 內容完整性檢查 |
 
-## 文件
-
 ---
 
 > 🚧 主平台開發中 · UI 與學生內容以繁體中文為主
