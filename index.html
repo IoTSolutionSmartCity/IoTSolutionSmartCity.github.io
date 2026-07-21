@@ -146,8 +146,18 @@ h1{
   color:#fff; text-shadow:0 2px 40px rgba(0,0,0,.85);
   animation:up 1s cubic-bezier(.16,1,.3,1) both;
 }
-.hl{display:block}
+.hl{display:block; perspective:700px}
 .hl+.hl{margin-left:clamp(1.2rem,9vw,9rem)}
+/* headline resolves character by character, each swinging up out of the plane */
+.ch{
+  display:inline-block; will-change:transform,opacity,filter;
+  animation:charIn .85s cubic-bezier(.16,1,.3,1) both; animation-delay:var(--cd,0s);
+}
+@keyframes charIn{
+  from{opacity:0; transform:translateY(.42em) rotateX(-72deg); filter:blur(7px)}
+  to{opacity:1; transform:none; filter:none}
+}
+@media(prefers-reduced-motion:reduce){.ch{animation:none}}
 .sub{
   margin:0; max-width:26rem; font-size:.9rem; line-height:1.8; font-weight:300;
   color:rgba(255,255,255,.72); text-shadow:0 1px 20px rgba(0,0,0,.8);
@@ -246,11 +256,11 @@ h1{
   position:fixed; inset:0; z-index:0; pointer-events:none;
   opacity:0; transition:opacity 1s ease;
 }
-.ambient.on{opacity:.42}
+.ambient.on{opacity:.85}
 .ambient canvas{display:block; width:100%; height:100%}
-.ambient::after{ /* keep body copy readable over a live simulation */
+.ambient::after{ /* darken only the middle band, where the copy sits */
   content:""; position:absolute; inset:0;
-  background:radial-gradient(90% 70% at 50% 50%, rgba(0,0,0,.72) 0%, rgba(0,0,0,.45) 55%, rgba(0,0,0,.2) 100%);
+  background:radial-gradient(58% 46% at 50% 50%, rgba(0,0,0,.82) 0%, rgba(0,0,0,.5) 62%, rgba(0,0,0,0) 100%);
 }
 
 /* ══════════ Sections ══════════ */
@@ -425,19 +435,42 @@ h2 em{font-style:italic; color:rgba(255,255,255,.72)}
 @media(max-width:900px){.mark{filter:none} .mark .l2{-webkit-text-fill-color:#22d3ee; color:#22d3ee; background:none}}
 
 /* ══════════ Marquee + footer ══════════ */
-.marquee{position:relative; z-index:2; background:rgba(0,0,0,.55); backdrop-filter:blur(3px); overflow:hidden; padding:2.2rem 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:1px solid rgba(255,255,255,.07)}
-.marquee-track{display:flex; width:max-content; animation:slide 38s linear infinite}
+/* HUD strip: translucent glass, faint cyan/magenta rim, edges masked to nothing */
+.marquee{
+  position:relative; z-index:2; overflow:hidden; padding:1.9rem 0;
+  background:linear-gradient(90deg, rgba(13,13,18,.88), rgba(13,13,18,.62), rgba(13,13,18,.88));
+  backdrop-filter:blur(12px) saturate(150%); -webkit-backdrop-filter:blur(12px) saturate(150%);
+  border-top:1px solid rgba(255,255,255,.09); border-bottom:1px solid rgba(255,255,255,.09);
+  box-shadow:inset 0 1px 0 rgba(0,255,255,.22), inset 0 -1px 0 rgba(255,0,127,.16),
+             0 0 70px -24px rgba(0,255,255,.4);
+  -webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+}
+/* 90s linear: one uninterrupted pass, no easing to stutter at the loop seam */
+.marquee-track{display:flex; width:max-content; animation:slide 90s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
 .marquee span{
   font-family:var(--serif); white-space:nowrap; padding-right:1.5rem;
   line-height:1.1;
 }
-/* 必修 carries the weight; 選修 is present but clearly secondary */
-.marquee .core{font-size:clamp(1.5rem,3.8vw,2.5rem); color:rgba(255,255,255,.82)}
-.marquee .elective{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(255,255,255,.3)}
-.marquee .sep{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(255,255,255,.14)}
+/* 必修 carries the weight — iridescent cyan → magenta → acid yellow, slowly cycling */
+.marquee .core{
+  font-size:clamp(1.5rem,3.8vw,2.5rem);
+  background:linear-gradient(90deg,#00FFFF 0%,#FF007F 34%,#CCFF00 67%,#00FFFF 100%);
+  background-size:300% 100%;
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent;
+  animation:iridescent 9s linear infinite;
+  filter:drop-shadow(0 0 14px rgba(0,255,255,.3));
+}
+@keyframes iridescent{to{background-position:300% 0}}
+/* 選修 stays quiet so the hierarchy survives the colour */
+.marquee .elective{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(255,255,255,.28)}
+.marquee .sep{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(0,255,255,.18)}
 .marquee .tag{
   font-family:var(--mono); font-size:10px; letter-spacing:.26em; text-transform:uppercase;
-  color:rgba(34,211,238,.75); align-self:center; padding:0 1.8rem 0 .4rem;
+  color:#CCFF00; text-shadow:0 0 12px rgba(204,255,0,.5);
+  align-self:center; padding:0 1.8rem 0 .4rem;
 }
 .marquee-track{align-items:baseline}
 @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -896,7 +929,33 @@ const nuclear = (S) => {
   };
 };
 
-const SCENES={projectile,light,gas,emag,nuclear,astronomy};
+/* Backdrop-only: two coherent sources, expanding wavefronts, real moiré where they
+   cross. Deliberately unlike any hero scene so the lower page doesn't read as a repeat. */
+let ambientTint="34,211,238";
+const interference = (S) => {
+  let t=0, srcs=[];
+  S.setInit(()=>{
+    t=0; const d=Math.min(S.W,S.H)*0.24;
+    srcs=[{x:S.W*0.5-d,y:S.H*0.5,ph:0},{x:S.W*0.5+d,y:S.H*0.5,ph:Math.PI}];
+  });
+  return ()=>{
+    const c=S.ctx; t+=0.55*S.DPR; c.clearRect(0,0,S.W,S.H);
+    const gap=30*S.DPR, max=Math.hypot(S.W,S.H)*0.72, drift=Math.min(S.W,S.H)*0.05;
+    c.lineWidth=1.15*S.DPR;
+    for(const s of srcs){
+      const x=s.x+Math.cos(t*0.004+s.ph)*drift, y=s.y+Math.sin(t*0.003+s.ph)*drift;
+      for(let r=(t%gap); r<max; r+=gap){
+        const a=(1-r/max)*0.55;
+        c.strokeStyle=`rgba(${ambientTint},${a.toFixed(3)})`;
+        c.beginPath(); c.arc(x,y,r,0,TAU); c.stroke();
+      }
+      c.beginPath(); c.arc(x,y,3.5*S.DPR,0,TAU);
+      c.fillStyle=`rgba(${ambientTint},.9)`; c.fill();
+    }
+  };
+};
+
+const SCENES={projectile,light,gas,emag,nuclear,astronomy,interference};
 
 /* ═══════════ Topics (HKDSE 課題 → 概念 → 實驗) ═══════════ */
 const TOPICS=[
@@ -997,14 +1056,11 @@ function mountScene(name){ hero.mount(name); }
 const ambientEl=document.getElementById("ambient");
 const ambient=createDriver(document.getElementById("acv"),ambientEl,
   {watch:bg,invert:true});
-const AMBIENT_SCENES=[["platform","emag"],["numbers","nuclear"],
-                      ["stack","astronomy"],["start","light"]];
-let ambientScene="";
-function setAmbient(name){
-  if(name===ambientScene) return;
-  ambientScene=name; ambient.mount(name);
-}
-setAmbient("emag");
+// same wavefield throughout, re-tinted per section — the palette does the work
+const AMBIENT_SCENES=[["platform","0,255,255"],["numbers","255,0,127"],
+                      ["stack","167,139,250"],["start","204,255,0"]];
+function setAmbient(tint){ ambientTint=tint; }
+ambient.mount("interference");
 
 // fade the backdrop in only once the hero is gone, so the two canvases never overlap
 new IntersectionObserver(([e])=>ambientEl.classList.toggle("on",!e.isIntersecting),
@@ -1015,7 +1071,7 @@ const sceneIO=new IntersectionObserver(es=>{
   for(const e of es){
     if(!e.isIntersecting) continue;
     const hit=AMBIENT_SCENES.find(([id])=>id===e.target.id);
-    if(hit) setAmbient(hit[1]);
+    if(hit) setAmbient(hit[1]);   // tint transitions as the scene keeps running
   }
 },{threshold:0.25});
 AMBIENT_SCENES.forEach(([id])=>{
@@ -1038,7 +1094,12 @@ function selectTopic(i){
   current=i; const T=TOPICS[i];
   canvas.classList.remove("on");
   setTimeout(()=>{ mountScene(T.scene); canvas.classList.add("on"); },260);
-  swap(headEl,T.head.split("<br>").map(l=>`<span class="hl">${l}</span>`).join(""));
+  // set directly, not via swap(): each character carries its own entrance delay,
+  // so a block-level swap animation on top would fight it
+  headEl.innerHTML=T.head.split("<br>").map((line,li)=>
+    `<span class="hl">${[...line].map((ch,i)=>
+      `<span class="ch" style="--cd:${(li*0.12+i*0.038).toFixed(3)}s">${ch}</span>`).join("")}</span>`
+  ).join("");
   swap(tagEl,T.tag); swap(subEl,T.sub); swap(hintEl,T.hint);
   swap(statsEl,T.stats.map(([v,l])=>
     `<div class="stat"><div class="row"><i class="rule"></i><b>${v}</b></div><span>${l}</span></div>`).join(""));
@@ -1163,6 +1224,14 @@ function openPopup(n,autoClose){
   if(autoClose) hideT=setTimeout(closePopup,3000);      // fades back into the button
 }
 
+function paintTrigger(n){
+  lastCount=n;
+  waitBtn.textContent=`已有 ${n.toLocaleString("en")} 人在等待發佈`;
+  waitBtn.classList.add("on");
+}
+// the count is public proof, not just a signup receipt — show it from first paint
+readCount().then(n=>{ if(n && !lastCount) paintTrigger(n); });
+
 scrim.addEventListener("click",e=>{ if(e.target===scrim) closePopup(); });
 addEventListener("keydown",e=>{ if(e.key==="Escape"&&scrim.classList.contains("on")) closePopup(); });
 waitBtn.addEventListener("click",()=>openPopup(lastCount,false));
@@ -1173,13 +1242,7 @@ async function revealCount(){
   for(const wait of [900,1800,3000,5000]){
     await new Promise(r=>setTimeout(r,wait));
     const n=await readCount();
-    if(n){
-      lastCount=n;
-      waitBtn.textContent=`已有 ${n.toLocaleString("en")} 人在等待發佈`;
-      waitBtn.classList.add("on");
-      openPopup(n,true);
-      return n;
-    }
+    if(n){ paintTrigger(n); openPopup(n,true); return n; }
   }
   // Count unreadable (offline, sheet unpublished, or opened over file:// where the
   // CSV's 307 has no CORS headers). Still confirm the signup — never invent a number.
@@ -1323,9 +1386,17 @@ const io=new IntersectionObserver((es)=>{
 },{threshold:.15});
 document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
 
-/* nav shadow */
+/* nav shadow + hero parallax: copy drifts down and dissolves as you leave the fold */
 const navEl=document.getElementById("nav");
-addEventListener("scroll",()=>navEl.classList.toggle("stuck",scrollY>60),{passive:true});
+const heroBody=document.querySelector(".hero-body"), heroRail=document.querySelector(".rail");
+addEventListener("scroll",()=>{
+  navEl.classList.toggle("stuck",scrollY>60);
+  if(reduce) return;
+  const p=Math.min(1,scrollY/innerHeight);
+  heroBody.style.transform=`translate3d(0,${(p*110).toFixed(1)}px,0)`;
+  heroBody.style.opacity=String(Math.max(0,1-p*1.35));
+  heroRail.style.opacity=String(Math.max(0,1-p*2.2));
+},{passive:true});
 
 /* ═══════════ Loader ═══════════ */
 (function(){
