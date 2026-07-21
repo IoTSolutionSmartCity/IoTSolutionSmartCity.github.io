@@ -56,80 +56,91 @@ body{
   box-shadow:none !important;
 }
 
-/* ══════════ Loading screen ══════════ */
-#loader{
-  position:fixed; inset:0; z-index:9999; background:#0D0D12;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:2.2rem; padding:2rem clamp(1.25rem,5vw,3rem); overflow:hidden;
+
+/* ══════════ Entry screen ══════════ */
+#entry{
+  position:fixed; inset:0; z-index:9999; overflow:hidden;
+  background:#0D0D12; color:#fff;
+  display:flex; flex-direction:column;
   clip-path:inset(0 0 0 0);
-  transition:clip-path .95s cubic-bezier(.76,0,.24,1), opacity .5s ease .45s, visibility .95s;
+  transition:clip-path .95s cubic-bezier(.76,0,.24,1), opacity .55s ease .4s, visibility .95s;
 }
-/* HUD unlock: the panel splits from the middle and retracts */
-#loader.done{clip-path:inset(50% 0 50% 0); opacity:0; visibility:hidden; pointer-events:none}
-.ld-scan{ /* drifting scanlines + a horizon glow */
+/* HUD unlock: splits at the middle and retracts */
+#entry.done{clip-path:inset(50% 0 50% 0); opacity:0; visibility:hidden; pointer-events:none}
+#entry canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+.entry-veil{
   position:absolute; inset:0; pointer-events:none;
   background:
-    repeating-linear-gradient(0deg, rgba(0,255,255,.045) 0 1px, transparent 1px 4px),
-    radial-gradient(60% 42% at 50% 50%, rgba(255,0,127,.12), transparent 70%);
-  animation:scan 7s linear infinite;
-}
-@keyframes scan{to{background-position:0 -160px, 0 0}}
-#loader.done .ld-scan{opacity:0; transition:opacity .3s}
-
-.ld-core{position:relative; display:grid; place-items:center; width:min(62vw,290px); aspect-ratio:1}
-.ld-ring{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg)}
-.ld-ring circle{fill:none; stroke-linecap:round}
-.ld-track{stroke:rgba(255,255,255,.07); stroke-width:2}
-.ld-prog{
-  stroke:url(#ldGrad); stroke-width:4;
-  stroke-dasharray:540.35; stroke-dashoffset:540.35;
-  filter:drop-shadow(0 0 10px rgba(0,255,255,.75)) drop-shadow(0 0 22px rgba(255,0,127,.45));
-  transition:stroke-dashoffset .18s linear;
-}
-.ld-ticks,.ld-ticks2{stroke:rgba(0,255,255,.28); stroke-width:1; transform-origin:100px 100px}
-.ld-ticks{stroke-dasharray:2 10; animation:spin 12s linear infinite}
-.ld-ticks2{stroke:rgba(204,255,0,.22); stroke-dasharray:1 26; animation:spin 22s linear reverse infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* percentage with an RGB-split glitch */
-.ld-num{
-  position:relative; font-family:var(--mono); font-weight:500;
-  font-size:clamp(2.4rem,9vw,3.6rem); letter-spacing:.06em;
-  font-variant-numeric:tabular-nums; color:#fff;
-  text-shadow:0 0 18px rgba(0,255,255,.55);
-}
-.ld-num::before,.ld-num::after{
-  content:attr(data-v); position:absolute; inset:0; opacity:.85;
-}
-.ld-num::before{color:#00FFFF; animation:glitchA 2.6s steps(2,end) infinite}
-.ld-num::after {color:#FF007F; animation:glitchB 2.6s steps(2,end) infinite}
-@keyframes glitchA{
-  0%,92%,100%{transform:none; clip-path:inset(0 0 0 0)}
-  94%{transform:translate(-2px,-1px); clip-path:inset(0 0 62% 0)}
-  97%{transform:translate(2px,1px);  clip-path:inset(58% 0 0 0)}
-}
-@keyframes glitchB{
-  0%,90%,100%{transform:none; clip-path:inset(0 0 0 0)}
-  93%{transform:translate(2px,1px);  clip-path:inset(0 0 55% 0)}
-  96%{transform:translate(-2px,-1px);clip-path:inset(64% 0 0 0)}
+    radial-gradient(120% 90% at 72% 42%, rgba(0,255,255,.13), transparent 62%),
+    radial-gradient(80% 60% at 20% 90%, rgba(255,0,127,.12), transparent 65%),
+    linear-gradient(rgba(13,13,18,.62), rgba(13,13,18,.25) 34%, rgba(13,13,18,.9));
 }
 
-.ld-word{
-  font-family:var(--serif); font-style:italic;
-  font-size:clamp(1.6rem,5vw,2.6rem); color:rgba(255,255,255,.86);
-  animation:wordIn .45s cubic-bezier(.16,1,.3,1);
+.entry-nav{
+  position:relative; z-index:2; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.4rem clamp(1.25rem,5vw,4rem);
+  animation:fadeSlideUp .8s ease both;
 }
-@keyframes wordIn{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
-.ld-foot{
-  position:absolute; left:0; right:0; bottom:0;
-  display:flex; justify-content:space-between;
-  padding:1.4rem clamp(1.25rem,5vw,3rem);
+.entry-nav .brand{display:flex; align-items:center; gap:.55rem; font-weight:600; font-size:1.05rem}
+.entry-tag{
   font-family:var(--mono); font-size:9.5px; letter-spacing:.3em; text-transform:uppercase;
-  color:rgba(255,255,255,.35);
+  color:#00FFFF; text-shadow:0 0 12px rgba(0,255,255,.5);
 }
-#ldStatus{color:#CCFF00; text-shadow:0 0 10px rgba(204,255,0,.45)}
+
+.entry-body{
+  position:relative; z-index:2; flex:1; min-height:0;
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:2.5rem clamp(1.25rem,5vw,4rem) clamp(1.8rem,4vw,3rem);
+}
+.entry-badge{
+  margin:0 0 1.1rem; font-family:var(--mono);
+  font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:rgba(255,255,255,.75);
+  animation:fadeSlideUp .8s .2s ease both;
+}
+.entry-h1{
+  margin:0; max-width:20ch; font-family:var(--serif); font-weight:500;
+  font-size:clamp(2.4rem,8vw,5.4rem); line-height:1.06; letter-spacing:-.035em;
+  text-shadow:0 2px 46px rgba(0,0,0,.85);
+  animation:fadeSlideUp .8s .4s ease both;
+}
+.entry-h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,#00FFFF,#A4F4FD 42%,#FF007F);
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent;
+}
+.entry-sub{
+  margin:0 0 1.5rem; max-width:34rem; font-size:.92rem; line-height:1.8; font-weight:300;
+  color:rgba(255,255,255,.62);
+  animation:fadeSlideUp .8s .7s ease both;
+}
+.entry-cta{
+  display:inline-flex; align-items:center; gap:.6rem; cursor:pointer;
+  border-radius:.7rem; background:#fff; color:#000;
+  padding:.8rem 1.6rem; font-size:.88rem; font-weight:600;
+  transition:transform .25s cubic-bezier(.22,1,.36,1), box-shadow .3s;
+  animation:fadeSlideUp .8s .9s ease both;
+}
+.entry-cta:hover{transform:scale(1.05); box-shadow:0 12px 40px -12px rgba(0,255,255,.7)}
+.entry-cta:active{transform:scale(.97)}
+.entry-cta svg{width:16px; height:16px; transition:transform .25s}
+.entry-cta:hover svg{transform:translateX(3px)}
+
+/* theme element: the syllabus itself, as a quiet strip along the bottom */
+.entry-topics{
+  display:flex; flex-wrap:wrap; gap:.4rem; margin-top:1.8rem;
+  animation:fadeSlideUp .8s 1.1s ease both;
+}
+.entry-topics span{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.14em;
+  padding:.34rem .7rem; border-radius:9999px;
+  border:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.42);
+}
+.entry-topics span.core{border-color:rgba(0,255,255,.28); color:rgba(0,255,255,.8)}
+@media(max-width:620px){.entry-topics{display:none}}
 @media(prefers-reduced-motion:reduce){
-  .ld-scan,.ld-ticks,.ld-ticks2,.ld-num::before,.ld-num::after{animation:none}
+  #entry *{animation:none !important}
 }
 
 /* ══════════ Nav ══════════ */
@@ -179,6 +190,8 @@ nav.stuck .nav-inner{background:rgba(255,255,255,.055); box-shadow:0 10px 40px -
   padding:5rem clamp(1.25rem,5vw,3.5rem) 0; text-align:left;
 }
 .hero-inner{max-width:52rem; width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:1.3rem}
+
+@keyframes fadeSlideUp{from{opacity:0; transform:translateY(24px)} to{opacity:1; transform:none}}
 .tagline{
   margin:0; font-family:var(--mono); color:rgba(255,255,255,.8);
   font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase;
@@ -478,46 +491,7 @@ h2 em{font-style:italic; color:rgba(255,255,255,.72)}
 .b-line:hover{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.35)}
 @media(max-width:900px){.mark{filter:none} .mark .l2{-webkit-text-fill-color:#22d3ee; color:#22d3ee; background:none}}
 
-/* ══════════ Marquee + footer ══════════ */
-/* HUD strip: translucent glass, faint cyan/magenta rim, edges masked to nothing */
-.marquee{
-  position:relative; z-index:2; overflow:hidden; padding:1.9rem 0;
-  background:linear-gradient(90deg, rgba(13,13,18,.88), rgba(13,13,18,.62), rgba(13,13,18,.88));
-  backdrop-filter:blur(12px) saturate(150%); -webkit-backdrop-filter:blur(12px) saturate(150%);
-  border-top:1px solid rgba(255,255,255,.09); border-bottom:1px solid rgba(255,255,255,.09);
-  box-shadow:inset 0 1px 0 rgba(0,255,255,.22), inset 0 -1px 0 rgba(255,0,127,.16),
-             0 0 70px -24px rgba(0,255,255,.4);
-  -webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
-  mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
-}
-/* 90s linear: one uninterrupted pass, no easing to stutter at the loop seam */
-.marquee-track{display:flex; width:max-content; animation:slide 90s linear infinite}
-.marquee:hover .marquee-track{animation-play-state:paused}
-.marquee span{
-  font-family:var(--serif); white-space:nowrap; padding-right:1.5rem;
-  line-height:1.1;
-}
-/* 必修 carries the weight — iridescent cyan → magenta → acid yellow, slowly cycling */
-.marquee .core{
-  font-size:clamp(1.5rem,3.8vw,2.5rem);
-  background:linear-gradient(90deg,#00FFFF 0%,#FF007F 34%,#CCFF00 67%,#00FFFF 100%);
-  background-size:300% 100%;
-  -webkit-background-clip:text; background-clip:text;
-  color:transparent; -webkit-text-fill-color:transparent;
-  animation:iridescent 9s linear infinite;
-  filter:drop-shadow(0 0 14px rgba(0,255,255,.3));
-}
-@keyframes iridescent{to{background-position:300% 0}}
-/* 選修 stays quiet so the hierarchy survives the colour */
-.marquee .elective{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(255,255,255,.28)}
-.marquee .sep{font-size:clamp(1rem,2.4vw,1.5rem); color:rgba(0,255,255,.18)}
-.marquee .tag{
-  font-family:var(--mono); font-size:10px; letter-spacing:.26em; text-transform:uppercase;
-  color:#CCFF00; text-shadow:0 0 12px rgba(204,255,0,.5);
-  align-self:center; padding:0 1.8rem 0 .4rem;
-}
-.marquee-track{align-items:baseline}
-@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* ══════════ Footer ══════════ */
 
 footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem 2.6rem}
 .foot{max-width:72rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center; justify-content:space-between;
@@ -531,7 +505,7 @@ footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   .reveal{opacity:1;transform:none;filter:none;transition:none}
-  .marquee-track,.scrollcue i::after,.live i{animation:none}
+  .scrollcue i::after,.live i{animation:none}
 }
 </style>
 </head>
@@ -546,30 +520,38 @@ footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem
     <feBlend in="SourceGraphic" in2="noise" mode="overlay"/>
   </filter>
 </svg>
+<!-- ══════════ Entry screen ══════════ -->
+<div id="entry">
+  <canvas id="ecv" aria-hidden="true"></canvas>
+  <div class="entry-veil"></div>
 
-<!-- ══════════ Loading ══════════ -->
-<div id="loader">
-  <div class="ld-scan" aria-hidden="true"></div>
-  <div class="ld-core">
-    <svg class="ld-ring" viewBox="0 0 200 200" aria-hidden="true">
-      <defs>
-        <linearGradient id="ldGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#00FFFF"/>
-          <stop offset="50%" stop-color="#FF007F"/>
-          <stop offset="100%" stop-color="#CCFF00"/>
-        </linearGradient>
-      </defs>
-      <circle class="ld-track"  cx="100" cy="100" r="86"/>
-      <circle class="ld-prog"   cx="100" cy="100" r="86" id="ldProg"/>
-      <circle class="ld-ticks"  cx="100" cy="100" r="72"/>
-      <circle class="ld-ticks2" cx="100" cy="100" r="94"/>
-    </svg>
-    <div class="ld-num" id="ldNum" data-v="000">000</div>
+  <div class="entry-nav">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+        <ellipse cx="12" cy="12" rx="10" ry="4.4"/>
+        <ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/>
+        <ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/>
+      </svg>
+      <span>PhysicsEasy</span>
+    </div>
+    <span class="entry-tag">HKDSE PHYSICS</span>
   </div>
-  <div class="ld-word" id="ldWord">觀察</div>
-  <div class="ld-foot">
-    <span>PHYSICSEASY</span>
-    <span id="ldStatus">INITIALISING</span>
+
+  <div class="entry-body">
+    <div>
+      <p class="entry-badge">HKDSE 物理 · 互動學習平台</p>
+      <h1 class="entry-h1">看得見的物理，<br /><em>才學得會</em></h1>
+    </div>
+
+    <div>
+      <p class="entry-sub">拋體、天體、氣體、光、電磁與核 —— 背後是一整片可互動的物理力場。以真實模擬與歷屆試題，把每一次做錯，變成真正搞懂的一刻。</p>
+      <button class="entry-cta" id="entryBtn" type="button">
+        進入平台
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <div class="entry-topics" id="entryTopics"></div>
+    </div>
   </div>
 </div>
 
@@ -676,9 +658,6 @@ footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem
     </div>
   </div>
 </section>
-
-<!-- ══════════ Marquee ══════════ -->
-<div class="marquee"><div class="marquee-track" id="mq"></div></div>
 
 <!-- ══════════ Waitlist popup ══════════ -->
 <div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="odoLabel">
@@ -1418,28 +1397,6 @@ const NUMS=[["9","必修 + 選修課題"],["15","年歷屆試題"],["6","可互�
 document.getElementById("nums").innerHTML=NUMS.map(([b,s],i)=>
   `<div class="num liquid-glass reveal" style="--d:${i*0.08}s"><b>${b}</b><span>${s}</span></div>`).join("");
 
-/* Subtopics, straight from content/categories.json — 22 必修 + 15 選修.
-   必修 leads and is set solid; 選修 trails, smaller and dimmer. */
-const CORE=[
-  "溫度、熱與內能","熱轉移","物態變化","氣體",
-  "波的本質與性質","光","聲",
-  "位置與運動","力與運動","力矩與平衡","拋體運動","功、能量與功率","動量","均勻圓周運動","萬有引力",
-  "靜電學","電路與家居用電","電磁學","電磁感應",
-  "輻射與放射性","原子模型","核能",
-];
-const ELECTIVE=[
-  "不同尺度的宇宙","天文學發展史","重力下的軌道運動","恒星與宇宙",
-  "盧瑟福原子模型","光電效應","玻爾氫原子模型","粒子或波","納米尺度探究",
-  "家居用電","建築與交通能源效益","可再生能源與不可再生能源",
-  "眼與耳的物理","非電離輻射醫學成像","電離輻射醫學成像",
-];
-const mqRun=[
-  ...CORE.map(t=>`<span class="core">${t}</span><span class="sep">·</span>`),
-  `<span class="tag">選修</span>`,
-  ...ELECTIVE.map(t=>`<span class="elective">${t}</span><span class="sep">·</span>`),
-].join("");
-document.getElementById("mq").innerHTML=mqRun.repeat(2);  // two runs: -50% loops seamlessly
-
 /* reveal on scroll */
 const io=new IntersectionObserver((es)=>{
   for(const e of es) if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
@@ -1458,34 +1415,40 @@ addEventListener("scroll",()=>{
   heroRail.style.opacity=String(Math.max(0,1-p*2.2));
 },{passive:true});
 
-/* ═══════════ Loader ═══════════ */
+/* ═══════════ Entry screen ═══════════ */
 (function(){
-  const el=document.getElementById("loader"), num=document.getElementById("ldNum"),
-        prog=document.getElementById("ldProg"), word=document.getElementById("ldWord"),
-        status=document.getElementById("ldStatus");
-  const WORDS=["觀察","模擬","理解"], STATUS=["INITIALISING","LOADING SCENES","CALIBRATING"];
-  const CIRC=2*Math.PI*86;                       // r=86 in the 200x200 viewBox
-  if(reduce){ el.classList.add("done"); return; }
-  let w=0;
-  const wt=setInterval(()=>{
-    w=(w+1)%WORDS.length;
-    word.textContent=WORDS[w];
-    status.textContent=STATUS[w];
-    word.classList.remove("ld-word"); void word.offsetWidth; word.classList.add("ld-word");
-  },900);
-  const t0=performance.now(), DUR=2400;
-  (function step(now){
-    const p=Math.min(1,(now-t0)/DUR);
-    const v=String(Math.round(p*100)).padStart(3,"0");
-    num.textContent=v; num.dataset.v=v;          // data-v drives the glitch layers
-    prog.style.strokeDashoffset=String(CIRC*(1-p));
-    if(p<1) requestAnimationFrame(step);
-    else{
-      clearInterval(wt);
-      status.textContent="READY";
-      setTimeout(()=>el.classList.add("done"),420);
-    }
-  })(t0);
+  const el=document.getElementById("entry"), btn=document.getElementById("entryBtn");
+
+  // the syllabus itself as the backdrop chrome — 必修 in cyan, 選修 muted
+  const CORE=["熱和氣體","力和運動","波動","電和磁","放射現象和核能"];
+  const ELECT=["天文學和航天科學","原子世界","能量和能源使用","醫學物理"];
+  document.getElementById("entryTopics").innerHTML=
+    CORE.map(t=>`<span class="core">${t}</span>`).join("")+
+    ELECT.map(t=>`<span>${t}</span>`).join("");
+
+  // live physics behind the copy instead of a video loop
+  const eDriver=createDriver(document.getElementById("ecv"), el, {});
+  eDriver.mount("interference");
+  ambientTint="0,255,255";
+  let alive=true;
+  (function spin(){ if(!alive) return; eDriver.frame(); requestAnimationFrame(spin); })();
+  // createDriver only draws when its host intersects; the entry covers the viewport
+  // so it qualifies immediately.
+
+  let entered=false;
+  function enter(){
+    if(entered) return;
+    entered=true;
+    el.classList.add("done");
+    setTimeout(()=>{ alive=false; el.remove(); }, 1100);   // stop the second sim once hidden
+  }
+  btn.addEventListener("click",enter);
+  const onKey=e=>{
+    if(e.key!=="Enter"&&e.key!=="Escape") return;   // not {once:true}: any other key
+    removeEventListener("keydown",onKey);           // would otherwise consume the listener
+    enter();
+  };
+  addEventListener("keydown",onKey);
 })();
 
 /* ═══════════ Boot ═══════════ */
