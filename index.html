@@ -241,8 +241,20 @@ h1{
 }
 @keyframes cue{0%{transform:translateY(-100%)}100%{transform:translateY(200%)}}
 
+/* ══════════ Ambient backdrop ══════════ */
+.ambient{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  opacity:0; transition:opacity 1s ease;
+}
+.ambient.on{opacity:.42}
+.ambient canvas{display:block; width:100%; height:100%}
+.ambient::after{ /* keep body copy readable over a live simulation */
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(90% 70% at 50% 50%, rgba(0,0,0,.72) 0%, rgba(0,0,0,.45) 55%, rgba(0,0,0,.2) 100%);
+}
+
 /* ══════════ Sections ══════════ */
-section.band{position:relative; z-index:2; background:#000; padding:6rem 1.5rem}
+section.band{position:relative; z-index:2; background:transparent; padding:6rem 1.5rem}
 .wrap{max-width:72rem; margin:0 auto}
 .eyebrow{
   display:flex; align-items:center; gap:.7rem; margin:0 0 1.2rem;
@@ -392,7 +404,7 @@ h2 em{font-style:italic; color:rgba(255,255,255,.72)}
 }
 
 /* ══════════ Watermark CTA ══════════ */
-.mark-sec{position:relative; z-index:2; background:#000; padding:7rem 1.25rem 5rem; text-align:center; overflow:hidden}
+.mark-sec{position:relative; z-index:2; background:transparent; padding:7rem 1.25rem 5rem; text-align:center; overflow:hidden}
 .mark{
   font-family:var(--serif); font-weight:400; line-height:.94; letter-spacing:-.03em;
   font-size:clamp(3rem,13vw,10rem);
@@ -413,15 +425,18 @@ h2 em{font-style:italic; color:rgba(255,255,255,.72)}
 @media(max-width:900px){.mark{filter:none} .mark .l2{-webkit-text-fill-color:#22d3ee; color:#22d3ee; background:none}}
 
 /* ══════════ Marquee + footer ══════════ */
-.marquee{position:relative; z-index:2; background:#000; overflow:hidden; padding:2.2rem 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:1px solid rgba(255,255,255,.07)}
+.marquee{position:relative; z-index:2; background:rgba(0,0,0,.55); backdrop-filter:blur(3px); overflow:hidden; padding:2.2rem 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:1px solid rgba(255,255,255,.07)}
 .marquee-track{display:flex; width:max-content; animation:slide 38s linear infinite}
 .marquee span{
   font-family:var(--serif); font-size:clamp(1.4rem,3.6vw,2.4rem);
-  color:rgba(255,255,255,.14); white-space:nowrap; padding-right:2.5rem;
+  white-space:nowrap; padding-right:1.6rem;
 }
+.marquee .core{color:rgba(255,255,255,.5)}          /* 必修 */
+.marquee .elective{color:rgba(34,211,238,.42)}      /* 選修 */
+.marquee .sep{color:rgba(255,255,255,.16)}
 @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
-footer{position:relative; z-index:2; background:#000; padding:3rem 1.5rem 2.6rem}
+footer{position:relative; z-index:2; background:transparent; padding:3rem 1.5rem 2.6rem}
 .foot{max-width:72rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center; justify-content:space-between;
   font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.35)}
 .live{display:flex; align-items:center; gap:.5rem}
@@ -458,6 +473,9 @@ footer{position:relative; z-index:2; background:#000; padding:3rem 1.5rem 2.6rem
     <div class="ld-bar"><i id="ldBar"></i></div>
   </div>
 </div>
+
+<!-- ══════════ Ambient backdrop for the scrolling sections ══════════ -->
+<div class="ambient" id="ambient" aria-hidden="true"><canvas id="acv"></canvas></div>
 
 <!-- ══════════ Nav ══════════ -->
 <nav id="nav">
@@ -919,44 +937,84 @@ const TOPICS=[
    stats:[["T² ∝ r³","Kepler III"],["6.67×10⁻¹¹","G"],["GMm/r²","gravitation"]]},
 ];
 
-/* ═══════════ Canvas driver ═══════════ */
+/* ═══════════ Canvas driver ═══════════
+   One factory, two instances: the interactive hero and the ambient backdrop that
+   runs behind the scrolling sections. Only the one on screen burns frames. */
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function createDriver(canvas, host, opts={}){
+  const ctx=canvas.getContext("2d");
+  const pointer={x:-9999,y:-9999,active:false};
+  let W=0,H=0,DPR=1,init=null,draw=null,S=null,visible=false;
+
+  function resize(){
+    DPR=Math.min(devicePixelRatio||1,2);
+    W=canvas.width=Math.max(1,host.clientWidth*DPR);
+    H=canvas.height=Math.max(1,host.clientHeight*DPR);
+    canvas.style.width=host.clientWidth+"px";
+    canvas.style.height=host.clientHeight+"px";
+    if(init) init();
+  }
+  function mount(name){
+    init=null;
+    S={ctx,get W(){return W},get H(){return H},get DPR(){return DPR},pointer,setInit(f){init=f}};
+    draw=SCENES[name](S);
+    resize();
+  }
+  addEventListener("resize",resize);
+  new IntersectionObserver(([e])=>{
+    visible = opts.invert ? !e.isIntersecting : e.isIntersecting;
+  },{threshold:0.01}).observe(opts.watch||host);
+
+  if(opts.interactive){
+    const at=e=>{const r=host.getBoundingClientRect();
+      pointer.x=(e.clientX-r.left)*DPR; pointer.y=(e.clientY-r.top)*DPR; pointer.active=true;};
+    addEventListener("pointermove",at);
+    addEventListener("pointerleave",()=>{pointer.active=false});
+    addEventListener("pointerdown",e=>{
+      if(opts.ignore&&e.target.closest(opts.ignore)) return;
+      at(e); S?.onDown?.(pointer.x,pointer.y);
+    });
+  }
+  return {mount,resize,frame(){ if(visible){ S?.tick?.(); draw?.(); } },
+          get live(){return visible}};
+}
+
 const canvas=document.getElementById("cv");
 const bg=document.getElementById("bg");
-const ctx=canvas.getContext("2d");
-const pointer={x:-9999,y:-9999,active:false};
-let W=0,H=0,DPR=1,init=null,draw=null,S=null,visible=true;
+const hero=createDriver(canvas,bg,{interactive:true,
+  ignore:"nav,.rail,.cta,.band,.mark-sec,footer,.scrim,.waitbtn"});
+function mountScene(name){ hero.mount(name); }
 
-function mountScene(name){
-  init=null;
-  S={ctx,get W(){return W},get H(){return H},get DPR(){return DPR},pointer,setInit(f){init=f}};
-  draw=SCENES[name](S);
-  resize();
+/* Ambient backdrop for the scrolling sections — same scenes, no interaction,
+   only alive once the hero has scrolled away. */
+const ambientEl=document.getElementById("ambient");
+const ambient=createDriver(document.getElementById("acv"),ambientEl,
+  {watch:bg,invert:true});
+const AMBIENT_SCENES=[["platform","emag"],["numbers","nuclear"],
+                      ["stack","astronomy"],["start","light"]];
+let ambientScene="";
+function setAmbient(name){
+  if(name===ambientScene) return;
+  ambientScene=name; ambient.mount(name);
 }
-function resize(){
-  DPR=Math.min(window.devicePixelRatio||1,2);
-  W=canvas.width=Math.max(1,bg.clientWidth*DPR);
-  H=canvas.height=Math.max(1,bg.clientHeight*DPR);
-  canvas.style.width=bg.clientWidth+"px";
-  canvas.style.height=bg.clientHeight+"px";
-  if(init) init();
-}
-addEventListener("resize",resize);
+setAmbient("emag");
 
-const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-function loop(){ if(visible){ S?.tick?.(); draw?.(); } requestAnimationFrame(loop); }
-// ponytail: pause the sim once the hero scrolls away — the only perf knob this page needs
-new IntersectionObserver(([e])=>{visible=e.isIntersecting;}).observe(bg);
+// fade the backdrop in only once the hero is gone, so the two canvases never overlap
+new IntersectionObserver(([e])=>ambientEl.classList.toggle("on",!e.isIntersecting),
+  {threshold:0.01}).observe(bg);
 
-addEventListener("pointermove",e=>{
-  const r=bg.getBoundingClientRect();
-  pointer.x=(e.clientX-r.left)*DPR; pointer.y=(e.clientY-r.top)*DPR; pointer.active=true;
-});
-addEventListener("pointerleave",()=>{pointer.active=false});
-addEventListener("pointerdown",e=>{
-  if(e.target.closest("nav,.rail,.cta,.band,.mark-sec,footer")) return;
-  const r=bg.getBoundingClientRect();
-  pointer.x=(e.clientX-r.left)*DPR; pointer.y=(e.clientY-r.top)*DPR; pointer.active=true;
-  S?.onDown?.(pointer.x,pointer.y);
+// each section owns a scene; swap as it scrolls into view
+const sceneIO=new IntersectionObserver(es=>{
+  for(const e of es){
+    if(!e.isIntersecting) continue;
+    const hit=AMBIENT_SCENES.find(([id])=>id===e.target.id);
+    if(hit) setAmbient(hit[1]);
+  }
+},{threshold:0.25});
+AMBIENT_SCENES.forEach(([id])=>{
+  const el=document.getElementById(id);
+  if(el) sceneIO.observe(el);
 });
 
 /* ═══════════ Topic switching ═══════════ */
@@ -1231,8 +1289,14 @@ const NUMS=[["9","必修 + 選修課題"],["15","年歷屆試題"],["6","可互�
 document.getElementById("nums").innerHTML=NUMS.map(([b,s],i)=>
   `<div class="num liquid-glass reveal" style="--d:${i*0.08}s"><b>${b}</b><span>${s}</span></div>`).join("");
 
-document.getElementById("mq").innerHTML=
-  `<span>從錯誤中學物理 &nbsp;·&nbsp; </span>`.repeat(20);
+/* HKDSE 物理 9 大課題 — 5 必修 + 4 選修 */
+const SYLLABUS=[
+  ["熱和氣體",1],["力和運動",1],["波動",1],["電和磁",1],["放射現象和核能",1],
+  ["原子世界",0],["能量和能源的使用",0],["醫學物理學",0],["天文學和航天科學",0],
+];
+const mqRun=SYLLABUS.map(([t,core])=>
+  `<span class="${core?"core":"elective"}">${t}</span><span class="sep">·</span>`).join("");
+document.getElementById("mq").innerHTML=mqRun.repeat(2);  // two runs: -50% loops seamlessly
 
 /* reveal on scroll */
 const io=new IntersectionObserver((es)=>{
@@ -1270,7 +1334,8 @@ addEventListener("scroll",()=>navEl.classList.toggle("stuck",scrollY>60),{passiv
 selectTopic(0);
 mountScene(TOPICS[0].scene);
 canvas.classList.add("on");
-if(!reduce) loop(); else draw?.();
+function loop(){ hero.frame(); ambient.frame(); requestAnimationFrame(loop); }
+if(!reduce) loop(); else { hero.frame(); ambient.frame(); }
 </script>
 </body>
 </html>
